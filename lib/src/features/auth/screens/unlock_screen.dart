@@ -1,0 +1,198 @@
+import 'dart:async';
+
+import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vaultkey/src/core/di.dart';
+import 'package:vaultkey/src/features/auth/providers/auth_providers.dart';
+import 'package:vaultkey/src/features/auth/services/master_auth_service.dart';
+import 'package:vaultkey/src/features/settings/providers/settings_providers.dart';
+
+/// Locked state: master password entry with optional biometric unlock and
+/// an escalating-cooldown countdown after repeated failures.
+class UnlockScreen extends ConsumerStatefulWidget {
+  const UnlockScreen({super.key});
+
+  @override
+  ConsumerState<UnlockScreen> createState() => _UnlockScreenState();
+}
+
+class _UnlockScreenState extends ConsumerState<UnlockScreen> {
+  final _passwordController = TextEditingController();
+  bool _obscure = true;
+  bool _busy = false;
+  String? _error;
+  Duration _cooldown = Duration.zero;
+  Timer? _countdown;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(_checkExistingCooldown);
+  }
+
+  @override
+  void dispose() {
+    _countdown?.cancel();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _checkExistingCooldown() async {
+    final remaining =
+        await ref.read(masterAuthServiceProvider).cooldownRemaining();
+    if (remaining > Duration.zero) _startCooldown(remaining);
+  }
+
+  void _startCooldown(Duration duration) {
+    _countdown?.cancel();
+    setState(() => _cooldown = duration);
+    _countdown = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
+      final next = _cooldown - const Duration(seconds: 1);
+      setState(() => _cooldown = next.isNegative ? Duration.zero : next);
+      if (_cooldown == Duration.zero) timer.cancel();
+    });
+  }
+
+  Future<void> _unlock() async {
+    final password = _passwordController.text;
+    if (password.isEmpty || _busy || _cooldown > Duration.zero) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final result = await ref.read(sessionProvider.notifier).unlock(password);
+    if (!mounted) return;
+    switch (result) {
+      case UnlockSuccess():
+        _passwordController.clear();
+      case UnlockWrongPassword(:final cooldown):
+        setState(() => _error = 'That password is not right.');
+        if (cooldown != null) _startCooldown(cooldown);
+      case UnlockCoolingDown(:final remaining):
+        _startCooldown(remaining);
+    }
+    setState(() => _busy = false);
+  }
+
+  Future<void> _biometricUnlock() async {
+    final ok = await ref.read(sessionProvider.notifier).unlockWithBiometrics();
+    if (!ok && mounted) {
+      setState(() => _error = 'Biometric unlock didn\'t work. '
+          'Use your master password.');
+    }
+  }
+
+  String get _cooldownLabel {
+    final m = _cooldown.inMinutes;
+    final s = _cooldown.inSeconds % 60;
+    final time =
+        m > 0 ? '$m min ${s.toString().padLeft(2, '0')} sec' : '$s sec';
+    return 'Too many attempts. Try again in $time.';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final biometrics = ref.watch(biometricStateProvider).valueOrNull;
+    final showBiometric =
+        (biometrics?.supported ?? false) && (biometrics?.enabled ?? false);
+    final coolingDown = _cooldown > Duration.zero;
+
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    width: 72,
+                    height: 72,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: scheme.primaryContainer,
+                      borderRadius:
+                          BorderRadius.circular(AppSpacing.borderRadiusLg),
+                    ),
+                    child: Icon(Icons.lock_outline,
+                        size: 36, color: scheme.primary),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  const Text('Vaultly',
+                      style: AppTextStyles.h1, textAlign: TextAlign.center),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    'Enter your master password to unlock.',
+                    style: AppTextStyles.bodyMedium
+                        .copyWith(color: scheme.onSurfaceVariant),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+                  VaultTextField(
+                    label: 'Master password',
+                    controller: _passwordController,
+                    obscureText: _obscure,
+                    autofocus: true,
+                    errorText: _error,
+                    onChanged: (_) {
+                      if (_error != null) setState(() => _error = null);
+                    },
+                    onSubmitted: (_) => _unlock(),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscure ? Icons.visibility : Icons.visibility_off,
+                      ),
+                      onPressed: () => setState(() => _obscure = !_obscure),
+                    ),
+                  ),
+                  if (coolingDown) ...[
+                    const SizedBox(height: AppSpacing.md),
+                    Container(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.warningContainerDark
+                            : AppColors.warningContainerLight,
+                        borderRadius:
+                            BorderRadius.circular(AppSpacing.borderRadius),
+                      ),
+                      child: Text(
+                        _cooldownLabel,
+                        style: AppTextStyles.label.copyWith(
+                          color: AppColors.warning(
+                            Theme.of(context).brightness,
+                          ),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: AppSpacing.lg),
+                  VaultButton(
+                    label: 'Unlock',
+                    isLoading: _busy,
+                    onPressed: coolingDown ? null : _unlock,
+                  ),
+                  if (showBiometric) ...[
+                    const SizedBox(height: AppSpacing.md),
+                    OutlinedButton.icon(
+                      onPressed: coolingDown ? null : _biometricUnlock,
+                      icon: const Icon(Icons.fingerprint),
+                      label: const Text('Unlock with biometrics'),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
