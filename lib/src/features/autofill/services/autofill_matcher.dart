@@ -27,6 +27,38 @@ abstract final class AutofillMatcher {
     'www',
   };
 
+  /// Packages of well-known browsers. When a fill request comes from one of
+  /// these the package identifies the *browser*, not the site being filled —
+  /// so package-name matching would only add noise. The web domain the
+  /// browser reports is the real signal, so we lean on that alone.
+  static const Set<String> _browserPackages = {
+    'com.android.chrome',
+    'com.chrome.beta',
+    'com.chrome.dev',
+    'com.chrome.canary',
+    'com.android.browser',
+    'com.google.android.apps.chrome',
+    'org.mozilla.firefox',
+    'org.mozilla.firefox_beta',
+    'org.mozilla.focus',
+    'org.mozilla.fenix',
+    'com.microsoft.emmx',
+    'com.opera.browser',
+    'com.opera.mini.native',
+    'com.opera.gx',
+    'com.brave.browser',
+    'com.duckduckgo.mobile.android',
+    'com.sec.android.app.sbrowser',
+    'com.vivaldi.browser',
+    'com.kiwibrowser.browser',
+    'com.microsoft.bing',
+    'com.ecosia.android',
+  };
+
+  /// Whether [package] is a browser (so only the web domain should match).
+  static bool _isBrowser(String package) =>
+      _browserPackages.contains(package) || package.contains('browser');
+
   /// How well [entry] matches [request]. 0 means "no signal at all".
   static int score(VaultEntry entry, AutofillFillRequest request) {
     final domain = _normalizeHost(request.domain ?? '');
@@ -49,7 +81,9 @@ abstract final class AutofillMatcher {
     }
 
     final package = (request.package ?? '').toLowerCase();
-    if (package.isNotEmpty) {
+    // Browser requests are matched purely on the web domain above; the
+    // browser's own package must never match a vault entry.
+    if (package.isNotEmpty && !_isBrowser(package)) {
       for (final segment in package.split('.')) {
         if (segment.length < 3 || _genericSegments.contains(segment)) {
           continue;

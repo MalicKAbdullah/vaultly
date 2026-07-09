@@ -61,9 +61,12 @@ class VaultListScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final entries = ref.watch(filteredEntriesProvider);
     final query = ref.watch(vaultQueryProvider);
-    final vault = ref.watch(vaultEntriesProvider);
     final banner = ref.watch(backupBannerProvider);
-    final isEmptyVault = (vault.valueOrNull ?? const []).isEmpty;
+    // Narrow watch: only the empty-vs-non-empty flip drives the empty state,
+    // so entry edits don't rebuild the whole screen through this path.
+    final isEmptyVault = ref.watch(
+      vaultEntriesProvider.select((v) => (v.valueOrNull ?? const []).isEmpty),
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -152,19 +155,21 @@ class VaultListScreen extends ConsumerWidget {
                     itemCount: entries.length,
                     itemBuilder: (context, index) {
                       final entry = entries[index];
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                        child: EntryTile(
-                          entry: entry,
-                          onTap: () =>
-                              context.push(AppRoutes.entryDetail(entry.id)),
-                          onCopyPassword: () => _copySensitive(
-                              context, ref, entry.password, 'Password'),
-                          onCopyUsername: () => _copySensitive(
-                              context, ref, entry.username, 'Username'),
-                          onEdit: () =>
-                              context.push(AppRoutes.editEntry(entry.id)),
-                          onDelete: () => _confirmDelete(context, ref, entry),
+                      return RepaintBoundary(
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                          child: EntryTile(
+                            entry: entry,
+                            onTap: () =>
+                                context.push(AppRoutes.entryDetail(entry.id)),
+                            onCopyPassword: () => _copySensitive(
+                                context, ref, entry.password, 'Password'),
+                            onCopyUsername: () => _copySensitive(
+                                context, ref, entry.username, 'Username'),
+                            onEdit: () =>
+                                context.push(AppRoutes.editEntry(entry.id)),
+                            onDelete: () => _confirmDelete(context, ref, entry),
+                          ),
                         ),
                       );
                     },

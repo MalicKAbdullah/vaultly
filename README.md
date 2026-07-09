@@ -23,7 +23,7 @@ Most password managers ask you to trust their servers with your entire digital l
 
 **Unlock & fill**
 - One **master password**, with optional **fingerprint / face** unlock
-- **Android Autofill** — sign in to other apps and websites with a tap
+- **Android Autofill** — sign in to other apps *and to websites in your browser* with a tap
 - Built-in **two-factor (TOTP) codes** — your 2FA lives next to your password
 
 **Everything organised**
@@ -39,6 +39,40 @@ Most password managers ask you to trust their servers with your entire digital l
 **Never lose access**
 - **Encrypted backup & restore** you can export anywhere
 - **Scheduled auto-backup** to any folder — including a Google Drive folder, so you can restore on a new phone
+
+## 🔓 Autofill: what works where
+
+Vaultly registers as an Android **Autofill Service** (Android 8 / API 26+). When a
+login form appears, Vaultly offers *"Unlock Vaultly to fill"*; you unlock once and
+pick the matching entry, and the credentials are written straight into the form.
+
+**Browser web forms are supported alongside native app forms.** When the login
+form lives inside a browser (Chrome and other Autofill-integrated browsers), the
+browser reports the page's **web domain** to the Autofill Framework. Vaultly:
+
+- extracts that web domain from the `AssistStructure` (`ViewNode.getWebDomain()`),
+  walking the whole node tree, and passes it to the entry picker;
+- reads the HTML of each `<input>` (`ViewNode.getHtmlInfo()`) — the `type` and
+  `autocomplete` attributes plus `name`/`id` — so password and username fields are
+  detected even when a website sets no Android autofill hints;
+- ranks vault entries by **host / domain match** (e.g. `accounts.google.com` matches
+  a `google.com` entry), and deliberately ignores the *browser's own* package name
+  (`com.android.chrome`, `org.mozilla.firefox`, …) so the browser never becomes the
+  match signal — the site's domain does.
+
+| Source | Autofill support |
+| :-- | :-- |
+| **Android — native app login forms** | ✅ Supported (Autofill Framework, API 26+) |
+| **Android — web login forms in a browser** | ✅ Supported (matched by the page's web domain) |
+| **iOS — apps & Safari** | ❌ Not supported (see below) |
+
+> **iOS note (future work).** iOS autofill is *not* implemented. It would require an
+> `ASCredentialProviderExtension` (a separate app extension using the
+> AuthenticationServices framework) rather than the Android Autofill Service, so it is
+> tracked as future work. Everything else in Vaultly runs on iOS.
+>
+> **Scope.** *Save* requests (offering to capture a brand-new login) are intentionally
+> out of scope — Vaultly only fills existing entries; you add new ones yourself.
 
 ## 🔒 Privacy & Security
 

@@ -154,36 +154,40 @@ class _TotpCodeCardState extends ConsumerState<TotpCodeCard>
                   ],
                 ),
               ),
-              AnimatedBuilder(
-                animation: _controller,
-                builder: (context, _) {
-                  final remaining =
-                      widget.config.period * (1 - _controller.value);
-                  return SizedBox(
-                    width: 44,
-                    height: 44,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        SizedBox(
-                          width: 44,
-                          height: 44,
-                          child: CircularProgressIndicator(
-                            value: 1 - _controller.value,
-                            strokeWidth: 4,
-                            backgroundColor:
-                                scheme.primary.withValues(alpha: 0.15),
+              // The ring repaints every animation frame; a RepaintBoundary
+              // keeps that raster off the code text and the rest of the card.
+              RepaintBoundary(
+                child: AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, _) {
+                    final remaining =
+                        widget.config.period * (1 - _controller.value);
+                    return SizedBox(
+                      width: 44,
+                      height: 44,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          SizedBox(
+                            width: 44,
+                            height: 44,
+                            child: CircularProgressIndicator(
+                              value: 1 - _controller.value,
+                              strokeWidth: 4,
+                              backgroundColor:
+                                  scheme.primary.withValues(alpha: 0.15),
+                            ),
                           ),
-                        ),
-                        Text(
-                          '${remaining.ceil()}',
-                          style: AppTextStyles.numberSmall
-                              .copyWith(color: scheme.onSurfaceVariant),
-                        ),
-                      ],
-                    ),
-                  );
-                },
+                          Text(
+                            '${remaining.ceil()}',
+                            style: AppTextStyles.numberSmall
+                                .copyWith(color: scheme.onSurfaceVariant),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
               ),
             ],
           ),

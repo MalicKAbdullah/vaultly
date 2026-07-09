@@ -84,22 +84,76 @@ void main() {
     expect(find.text('Unlock with biometrics'), findsNothing);
   });
 
-  testWidgets('biometric button unlocks when enabled and prompt succeeds',
-      (tester) async {
-    // Enable biometrics: wrap the real derived key in storage.
+  /// Enables biometric unlock by wrapping the real derived key in storage,
+  /// returning the scripted authenticator the screen will drive.
+  Future<FakeBiometricAuthenticator> enableBiometrics({
+    bool result = true,
+    bool supported = true,
+  }) async {
     final setup = await auth.unlock(password) as UnlockSuccess;
-    final biometrics = FakeBiometricAuthenticator();
+    final biometrics =
+        FakeBiometricAuthenticator(result: result, supported: supported);
     await BiometricUnlockService(
       storage: storage,
       authenticator: biometrics,
     ).enable(setup.key);
+    return biometrics;
+  }
 
+  testWidgets('biometric button is shown whenever biometrics are enabled',
+      (tester) async {
+    // Prompt fails so the auto-trigger cannot unlock and hide the screen.
+    final biometrics = await enableBiometrics(result: false);
     await pumpUnlock(tester, biometrics: biometrics);
     expect(find.text('Unlock with biometrics'), findsOneWidget);
+    expect(containerOf(tester).read(sessionProvider), AuthStatus.locked);
+  });
 
+  testWidgets('the prompt auto-triggers and unlocks on entering the screen',
+      (tester) async {
+    final biometrics = await enableBiometrics();
+    await pumpUnlock(tester, biometrics: biometrics);
+    // No tap: the prompt fired automatically and unlocked the session.
+    expect(containerOf(tester).read(sessionProvider), AuthStatus.unlocked);
+  });
+
+  testWidgets('the button retries after the auto-prompt fails', (tester) async {
+    final biometrics = await enableBiometrics(result: false);
+    await pumpUnlock(tester, biometrics: biometrics);
+    expect(containerOf(tester).read(sessionProvider), AuthStatus.locked);
+    expect(find.text('Unlock with biometrics'), findsOneWidget);
+
+    // The retry succeeds this time.
+    biometrics.result = true;
     await tester.tap(find.text('Unlock with biometrics'));
     await tester.pumpAndSettle();
     expect(containerOf(tester).read(sessionProvider), AuthStatus.unlocked);
+  });
+
+  testWidgets('master password still works when biometrics are enabled',
+      (tester) async {
+    final biometrics = await enableBiometrics(result: false);
+    await pumpUnlock(tester, biometrics: biometrics);
+
+    await tester.enterText(find.byType(TextField).first, password);
+    await tester.tap(find.text('Unlock'));
+    await tester.pumpAndSettle();
+    expect(containerOf(tester).read(sessionProvider), AuthStatus.unlocked);
+  });
+
+  testWidgets('shows a hardware-unavailable note when enabled but unsupported',
+      (tester) async {
+    final biometrics = await enableBiometrics(supported: false);
+    await pumpUnlock(tester, biometrics: biometrics);
+    expect(find.text('Unlock with biometrics'), findsOneWidget);
+    expect(find.textContaining('Biometric hardware is not available'),
+        findsOneWidget);
+    // Never auto-unlocks on unsupported hardware; password remains.
+    expect(
+      containerOf(tester).read(sessionProvider),
+      isNot(AuthStatus.unlocked),
+    );
+    expect(find.byType(TextField), findsOneWidget);
   });
 
   testWidgets('a persisted cooldown disables the unlock button',
