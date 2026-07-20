@@ -1,6 +1,6 @@
 name: vaultkey
 description: Vaultly — an offline, encrypted password manager with vault health insights and scheduled backups.
-version: 1.2.0+3
+version: 1.2.1+4
 publish_to: none
 
 environment:
@@ -43,27 +43,32 @@ dependencies:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_crypto
-      ref: f17e8e14194af3c69868155c58e2439fc796c235
+      ref: db72eefdf33c6b6ae479ff5aea51c96c4212e4cf
   core_storage:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_storage
-      ref: f17e8e14194af3c69868155c58e2439fc796c235
+      ref: db72eefdf33c6b6ae479ff5aea51c96c4212e4cf
   core_security:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_security
-      ref: f17e8e14194af3c69868155c58e2439fc796c235
+      ref: db72eefdf33c6b6ae479ff5aea51c96c4212e4cf
   core_theme:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_theme
-      ref: f17e8e14194af3c69868155c58e2439fc796c235
+      ref: db72eefdf33c6b6ae479ff5aea51c96c4212e4cf
   core_ui:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_ui
-      ref: f17e8e14194af3c69868155c58e2439fc796c235
+      ref: db72eefdf33c6b6ae479ff5aea51c96c4212e4cf
+  core_backup:
+    git:
+      url: https://github.com/MalicKAbdullah/secure-suite-core.git
+      path: core_backup
+      ref: db72eefdf33c6b6ae479ff5aea51c96c4212e4cf
 dev_dependencies:
   flutter_test:
     sdk: flutter

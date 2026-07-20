@@ -1,18 +1,17 @@
 import 'dart:io';
 
+import 'package:core_backup/core_backup.dart';
 import 'package:core_crypto/core_crypto.dart';
 import 'package:core_storage/core_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:vaultkey/src/core/clock.dart';
 import 'package:vaultkey/src/core/interfaces/autofill_bridge.dart';
-import 'package:vaultkey/src/core/interfaces/backup_folder.dart';
 import 'package:vaultkey/src/core/interfaces/key_derivation.dart';
 import 'package:vaultkey/src/core/interfaces/vault_file_store.dart';
 import 'package:vaultkey/src/core/services/clipboard_guard.dart';
 import 'package:vaultkey/src/features/auth/services/biometric_service.dart';
 import 'package:vaultkey/src/features/auth/services/master_auth_service.dart';
-import 'package:vaultkey/src/features/backup/services/auto_backup_service.dart';
 import 'package:vaultkey/src/features/backup/services/backup_codec.dart';
 import 'package:vaultkey/src/features/vault/data/vault_repository.dart';
 
@@ -94,8 +93,10 @@ final backupFolderProvider = Provider<IBackupFolder>(
 final autoBackupServiceProvider = Provider<AutoBackupService>(
   (ref) => AutoBackupService(
     storage: ref.watch(secureStorageProvider),
-    codec: ref.watch(backupCodecProvider),
     folder: ref.watch(backupFolderProvider),
-    clock: ref.watch(clockProvider),
+    keyPrefix: 'vaultkey',
+    fileLabel: 'Vaultly',
+    fileExtension: 'vkbackup',
+    now: () => ref.read(clockProvider).now(),
   ),
 );

@@ -1,9 +1,9 @@
 import 'dart:typed_data';
 
+import 'package:core_backup/core_backup.dart';
 import 'package:core_storage/core_storage.dart';
 import 'package:vaultkey/src/core/clock.dart';
 import 'package:vaultkey/src/core/interfaces/autofill_bridge.dart';
-import 'package:vaultkey/src/core/interfaces/backup_folder.dart';
 import 'package:vaultkey/src/core/interfaces/key_derivation.dart';
 import 'package:vaultkey/src/core/interfaces/vault_file_store.dart';
 import 'package:vaultkey/src/core/services/clipboard_guard.dart';

@@ -1,13 +1,15 @@
+import 'package:core_backup/core_backup.dart';
 import 'package:core_theme/core_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vaultkey/src/core/app_info.dart';
+import 'package:vaultkey/src/core/di.dart';
 import 'package:vaultkey/src/core/router/app_router.dart';
 import 'package:vaultkey/src/features/auth/providers/auth_providers.dart';
 import 'package:vaultkey/src/features/settings/providers/settings_providers.dart';
-import 'package:vaultkey/src/features/settings/widgets/auto_backup_section.dart';
 import 'package:vaultkey/src/features/settings/widgets/autofill_section.dart';
+import 'package:vaultkey/src/features/vault/providers/vault_providers.dart';
 
 /// Settings: security, auto-backup, export/import, about, danger zone.
 class SettingsScreen extends ConsumerWidget {
@@ -130,7 +132,10 @@ class SettingsScreen extends ConsumerWidget {
           const AutofillSection(),
           const Divider(height: AppSpacing.lg),
           const _SectionHeader('Auto-backup'),
-          const AutoBackupSection(),
+          AutoBackupSection(
+            service: ref.watch(autoBackupServiceProvider),
+            producer: ref.watch(vaultBackupProducerProvider),
+          ),
           const Divider(height: AppSpacing.lg),
           const _SectionHeader('Your data'),
           ListTile(

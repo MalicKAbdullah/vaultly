@@ -3,7 +3,6 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vaultkey/src/core/di.dart';
-import 'package:vaultkey/src/features/backup/services/auto_backup_service.dart';
 import 'package:vaultkey/src/features/backup/services/backup_codec.dart';
 import 'package:vaultkey/src/features/backup/services/csv_codec.dart';
 import 'package:vaultkey/src/features/backup/services/file_transfer.dart';
@@ -67,7 +66,9 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     if (content == null) return;
     await FileTransfer.shareAsFile(
       content: content,
-      fileName: AutoBackupService.fileNameFor(ref.read(clockProvider).now()),
+      fileName: ref
+          .read(autoBackupServiceProvider)
+          .fileNameFor(ref.read(clockProvider).now()),
     );
   }
 
@@ -76,7 +77,9 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     if (content == null) return;
     final saved = await FileTransfer.saveAs(
       content: content,
-      fileName: AutoBackupService.fileNameFor(ref.read(clockProvider).now()),
+      fileName: ref
+          .read(autoBackupServiceProvider)
+          .fileNameFor(ref.read(clockProvider).now()),
     );
     if (saved && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

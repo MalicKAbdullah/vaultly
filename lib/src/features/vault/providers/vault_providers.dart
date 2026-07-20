@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 
+import 'package:core_backup/core_backup.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -10,6 +12,20 @@ import 'package:vaultkey/src/features/totp/models/totp_config.dart';
 import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
 
 const _uuid = Uuid();
+
+/// Producer for Settings "Back up now" — encrypts the current vault into the
+/// app's `.vkbackup` bytes, fed to the shared auto-backup engine.
+final vaultBackupProducerProvider = Provider<BackupProducer>((ref) {
+  return (passphrase) async {
+    final entries = await ref.read(vaultEntriesProvider.future);
+    final raw = await ref.read(backupCodecProvider).encode(
+          entries: entries,
+          passphrase: passphrase!,
+          createdAt: ref.read(clockProvider).now(),
+        );
+    return Uint8List.fromList(utf8.encode(raw));
+  };
+});
 
 final vaultEntriesProvider =
     AsyncNotifierProvider<VaultNotifier, List<VaultEntry>>(VaultNotifier.new);

@@ -1,5 +1,5 @@
+import 'package:core_backup/core_backup.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:vaultkey/src/features/backup/services/auto_backup_policy.dart';
 
 void main() {
   final base = DateTime(2026, 7, 5, 10, 30);
