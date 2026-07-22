@@ -92,6 +92,7 @@ class VaultListScreen extends ConsumerWidget {
       ),
       body: Column(
         children: [
+          const _NotifyTrigger(),
           const _UpdateBannerCard(),
           if (banner != null) _BackupBanner(message: banner),
           Padding(
@@ -248,4 +249,32 @@ class _UpdateBannerCard extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Fires the backup + vault-health notification checks once per app open.
+/// Renders nothing.
+class _NotifyTrigger extends ConsumerStatefulWidget {
+  const _NotifyTrigger();
+
+  @override
+  ConsumerState<_NotifyTrigger> createState() => _NotifyTriggerState();
+}
+
+class _NotifyTriggerState extends ConsumerState<_NotifyTrigger> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final config = ref.read(autoBackupControllerProvider).valueOrNull;
+      final entries = ref.read(vaultEntriesProvider).valueOrNull ?? const [];
+      ref.read(vaultNotifierProvider).checkOnOpen(
+            config: config,
+            entries: entries,
+            now: DateTime.now(),
+          );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }

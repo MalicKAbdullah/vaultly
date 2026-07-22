@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:core_backup/core_backup.dart';
 import 'package:core_crypto/core_crypto.dart';
+import 'package:core_notify/core_notify.dart';
 import 'package:core_storage/core_storage.dart';
 import 'package:core_update/core_update.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,6 +15,7 @@ import 'package:vaultkey/src/core/services/clipboard_guard.dart';
 import 'package:vaultkey/src/features/auth/services/biometric_service.dart';
 import 'package:vaultkey/src/features/auth/services/master_auth_service.dart';
 import 'package:vaultkey/src/features/backup/services/backup_codec.dart';
+import 'package:vaultkey/src/features/notifications/vault_notifier.dart';
 import 'package:vaultkey/src/features/vault/data/vault_repository.dart';
 
 /// Composition root. Tests override the leaf providers (storage, file store,
@@ -126,3 +128,15 @@ final updateCheckProvider = FutureProvider<UpdateInfo?>((ref) async {
 
 /// Session-only dismissal of the update banner.
 final updateDismissedProvider = StateProvider<bool>((_) => false);
+
+// -- Notifications (core_notify) ------------------------------------------
+
+/// Overridden in main() with an initialized [LocalNotify].
+final notifyProvider = Provider<INotify>((_) => const NoopNotify());
+
+final vaultNotifierProvider = Provider<VaultNotifier>(
+  (ref) => VaultNotifier(
+    notify: ref.watch(notifyProvider),
+    storage: ref.watch(secureStorageProvider),
+  ),
+);
