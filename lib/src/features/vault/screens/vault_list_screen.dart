@@ -1,5 +1,6 @@
 import 'package:core_theme/core_theme.dart';
 import 'package:core_ui/core_ui.dart';
+import 'package:core_update/core_update.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -91,6 +92,7 @@ class VaultListScreen extends ConsumerWidget {
       ),
       body: Column(
         children: [
+          const _UpdateBannerCard(),
           if (banner != null) _BackupBanner(message: banner),
           Padding(
             padding: const EdgeInsets.fromLTRB(
@@ -216,6 +218,33 @@ class _BackupBanner extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// "Update available" card, shown when a newer GitHub release exists and the
+/// user hasn't dismissed it this session.
+class _UpdateBannerCard extends ConsumerWidget {
+  const _UpdateBannerCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final info = ref.watch(updateCheckProvider).valueOrNull;
+    final dismissed = ref.watch(updateDismissedProvider);
+    if (info == null || dismissed) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.sm,
+        AppSpacing.md,
+        0,
+      ),
+      child: UpdateBanner(
+        info: info,
+        onUpdate: () => ref.read(updateServiceProvider).openDownload(info),
+        onDismiss: () =>
+            ref.read(updateDismissedProvider.notifier).state = true,
       ),
     );
   }

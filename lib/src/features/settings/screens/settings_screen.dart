@@ -153,6 +153,9 @@ class SettingsScreen extends ConsumerWidget {
             onTap: () => context.push(AppRoutes.import),
           ),
           const Divider(height: AppSpacing.lg),
+          const _SectionHeader('Updates'),
+          const _UpdateSection(),
+          const Divider(height: AppSpacing.lg),
           const _SectionHeader('About'),
           const ListTile(
             leading: Icon(Icons.shield_outlined),
@@ -163,7 +166,8 @@ class SettingsScreen extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
             child: Text(
               'Your passwords are stored only on this device, protected '
-              'by encryption. Vaultly never connects to the internet.',
+              'by encryption. The only network use is the optional update '
+              'check.',
               style: AppTextStyles.bodySmall
                   .copyWith(color: scheme.onSurfaceVariant),
             ),
@@ -203,6 +207,79 @@ class _SectionHeader extends StatelessWidget {
           color: Theme.of(context).colorScheme.onSurfaceVariant,
         ),
       ),
+    );
+  }
+}
+
+/// "Check for updates on open" toggle + a manual "Check now", backed by
+/// core_update. On by default; the only network call the app makes.
+class _UpdateSection extends ConsumerStatefulWidget {
+  const _UpdateSection();
+
+  @override
+  ConsumerState<_UpdateSection> createState() => _UpdateSectionState();
+}
+
+class _UpdateSectionState extends ConsumerState<_UpdateSection> {
+  bool _checking = false;
+
+  Future<void> _checkNow() async {
+    setState(() => _checking = true);
+    final info = await ref.read(updateServiceProvider).check();
+    if (!mounted) return;
+    setState(() => _checking = false);
+    final messenger = ScaffoldMessenger.of(context);
+    if (info == null) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text("You're on the latest version.")),
+      );
+    } else {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Update available · v${info.version}'),
+          action: SnackBarAction(
+            label: 'Update',
+            onPressed: () => ref.read(updateServiceProvider).openDownload(info),
+          ),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final autoCheck = ref.watch(updateAutoCheckProvider).valueOrNull ?? true;
+    return Column(
+      children: [
+        SwitchListTile(
+          secondary: const Icon(Icons.system_update_alt),
+          title: const Text('Check for updates on open'),
+          subtitle: const Text(
+            'Looks for a new release on GitHub. Nothing is uploaded.',
+          ),
+          value: autoCheck,
+          onChanged: (v) async {
+            await ref.read(secureStorageProvider).write(
+                  key: updateAutoCheckKey,
+                  value: v ? 'true' : 'false',
+                );
+            ref.invalidate(updateAutoCheckProvider);
+            ref.invalidate(updateCheckProvider);
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.refresh),
+          title: const Text('Check now'),
+          trailing: _checking
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : null,
+          onTap: _checking ? null : _checkNow,
+        ),
+      ],
     );
   }
 }
