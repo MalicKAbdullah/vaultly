@@ -290,11 +290,11 @@ class _Panel extends StatelessWidget {
   }
 }
 
-class _About extends StatelessWidget {
+class _About extends ConsumerWidget {
   const _About();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final c = SuiteColors.of(context);
     return Column(
       children: [
@@ -305,7 +305,7 @@ class _About extends StatelessWidget {
           style: AppTextStyles.h3.copyWith(color: c.textPrimary),
         ),
         Text(
-          'Version ${AppInfo.version}',
+          'Version ${ref.watch(appVersionProvider).valueOrNull ?? ''}',
           style: AppTextStyles.bodySmall.copyWith(color: c.textSecondary),
         ),
         const SizedBox(height: AppSpacing.smd),

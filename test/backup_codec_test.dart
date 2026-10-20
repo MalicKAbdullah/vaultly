@@ -12,6 +12,7 @@ void main() {
   final codec = BackupCodec(
     keyDerivation: FakeKeyDerivation(),
     cipher: const CipherService(),
+    appVersion: () async => '9.9.9',
   );
   final createdAt = DateTime.utc(2026, 7, 5, 12);
 
@@ -66,6 +67,7 @@ void main() {
       expect(preview.formatVersion, 1);
       expect(preview.createdAt, createdAt);
       expect(preview.entryCount, 2);
+      expect(preview.appVersion, '9.9.9');
     });
 
     test('ciphertext does not leak passwords in plaintext', () async {

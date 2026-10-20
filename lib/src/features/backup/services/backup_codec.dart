@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:core_crypto/core_crypto.dart';
-import 'package:vaultkey/src/core/app_info.dart';
 import 'package:vaultkey/src/core/interfaces/key_derivation.dart';
 import 'package:vaultkey/src/features/vault/data/vault_repository.dart';
 import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
@@ -47,11 +46,14 @@ final class BackupCodec {
   const BackupCodec({
     required IKeyDerivation keyDerivation,
     required CipherService cipher,
+    required Future<String> Function() appVersion,
   })  : _kdf = keyDerivation,
-        _cipher = cipher;
+        _cipher = cipher,
+        _appVersion = appVersion;
 
   final IKeyDerivation _kdf;
   final CipherService _cipher;
+  final Future<String> Function() _appVersion;
 
   static const String format = 'vaultkey.backup';
   static const int formatVersion = 1;
@@ -74,7 +76,7 @@ final class BackupCodec {
     return jsonEncode({
       'format': format,
       'formatVersion': formatVersion,
-      'appVersion': AppInfo.version,
+      'appVersion': await _appVersion(),
       'createdAt': createdAt.toUtc().toIso8601String(),
       'entryCount': entries.length,
       'kdf': 'argon2id',
