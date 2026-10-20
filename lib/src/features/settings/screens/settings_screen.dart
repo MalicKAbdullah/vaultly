@@ -177,7 +177,7 @@ class SettingsScreen extends ConsumerWidget {
                       SettingsTile(
                         icon: Icons.download_rounded,
                         title: 'Import',
-                        subtitle: 'Restore a backup or bring passwords over',
+                        subtitle: 'Restore a backup or a CSV',
                         onTap: () => context.push(AppRoutes.import),
                       ),
                     ],
@@ -316,7 +316,7 @@ class _UpdateSectionState extends ConsumerState<_UpdateSection> {
       children: [
         SettingsTile(
           icon: Icons.system_update_alt_rounded,
-          title: 'Check for updates on open',
+          title: 'Check on open',
           subtitle: 'Looks on GitHub. Nothing is uploaded.',
           trailing: Switch(
             value: autoCheck,

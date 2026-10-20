@@ -80,6 +80,7 @@ class _EntryDetailScreenState extends ConsumerState<EntryDetailScreen> {
           label: 'Password',
           value: _revealed ? entry.password : '•' * 14,
           monospace: _revealed,
+          obscured: !_revealed,
           onCopy: () => _copySensitive(entry.password, 'Password'),
           below: StrengthMeter(password: entry.password),
           extraAction: IconButton(
@@ -194,6 +195,7 @@ class _EntryDetailScreenState extends ConsumerState<EntryDetailScreen> {
               children: [
                 if (entry.password.isNotEmpty)
                   Expanded(
+                    flex: 3,
                     child: VaultButton(
                       label: 'Copy password',
                       icon: Icons.copy_rounded,
@@ -205,6 +207,7 @@ class _EntryDetailScreenState extends ConsumerState<EntryDetailScreen> {
                   const SizedBox(width: AppSpacing.smd),
                 if (entry.url.isNotEmpty)
                   Expanded(
+                    flex: 2,
                     child: VaultButton(
                       label: 'Open site',
                       icon: Icons.open_in_new_rounded,
@@ -327,7 +330,10 @@ class _HistoryTileState extends State<_HistoryTile> {
               children: [
                 Text(
                   _revealed ? widget.item.password : '•' * 12,
-                  style: AppTextStyles.code.copyWith(color: c.textPrimary),
+                  style: AppTextStyles.code.copyWith(
+                    color: c.textPrimary,
+                    letterSpacing: _revealed ? null : 1.5,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),

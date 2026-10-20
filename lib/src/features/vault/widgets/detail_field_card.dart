@@ -10,6 +10,7 @@ class DetailFieldCard extends StatelessWidget {
     required this.value,
     required this.onCopy,
     this.monospace = false,
+    this.obscured = false,
     this.extraAction,
     this.multiline = false,
     this.below,
@@ -20,6 +21,9 @@ class DetailFieldCard extends StatelessWidget {
   final String value;
   final VoidCallback onCopy;
   final bool monospace;
+
+  /// The value is a row of mask dots standing in for a hidden secret.
+  final bool obscured;
   final Widget? extraAction;
   final bool multiline;
 
@@ -31,7 +35,14 @@ class DetailFieldCard extends StatelessWidget {
     final c = SuiteColors.of(context);
     final valueStyle = monospace
         ? AppTextStyles.code.copyWith(color: c.textPrimary, fontSize: 17)
-        : AppTextStyles.body.copyWith(color: c.textPrimary, fontSize: 17);
+        : obscured
+            ? AppTextStyles.code.copyWith(
+                color: c.textPrimary,
+                fontSize: 20,
+                letterSpacing: 1.5,
+                height: 1.1,
+              )
+            : AppTextStyles.body.copyWith(color: c.textPrimary, fontSize: 17);
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.mdl,

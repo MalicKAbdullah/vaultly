@@ -57,9 +57,8 @@ class HealthScoreFigure extends StatelessWidget {
             TextSpan(text: '$score', style: big),
             TextSpan(
               text: ' /100',
-              style: AppTextStyles.h3.copyWith(
+              style: AppTextStyles.numberMedium.copyWith(
                 color: c.textTertiary,
-                fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
           ],
@@ -202,9 +201,8 @@ class HealthScreen extends ConsumerWidget {
                           'ones.',
                       color: c.negative,
                       entries: report.weak,
-                      detail: (e) => StrengthEstimator.estimate(e.password)
-                          .level
-                          .label,
+                      detail: (e) =>
+                          StrengthEstimator.estimate(e.password).level.label,
                     ),
                     _IssueSection(
                       title: 'Reused passwords',
@@ -330,16 +328,8 @@ class _ScoreCard extends StatelessWidget {
               style: AppTextStyles.bodyMedium.copyWith(color: c.textSecondary),
             ),
             const SizedBox(height: AppSpacing.mdl),
-            SegmentedBar(
-              values: [
-                clean.toDouble(),
-                report.weak.length.toDouble(),
-                report.reused.length.toDouble(),
-                report.old.length.toDouble(),
-              ],
-              colors: [c.positive, c.negative, c.warning, c.info],
-            ),
-            const SizedBox(height: AppSpacing.md),
+            Divider(height: 1, color: c.hairline),
+            const SizedBox(height: AppSpacing.smd),
             row('Healthy', clean, c.positive),
             row('Weak', report.weak.length, c.negative),
             row('Reused', report.reused.length, c.warning),

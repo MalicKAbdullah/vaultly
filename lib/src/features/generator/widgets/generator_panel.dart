@@ -55,8 +55,8 @@ class _GeneratorPanelState extends ConsumerState<GeneratorPanel> {
     showCopiedSnack(context, what: 'Password', clearsAfter: guard.clearAfter);
   }
 
-  Widget _toggle(String label, String example, bool value,
-      ValueChanged<bool> onChanged) {
+  Widget _toggle(
+      String label, String example, bool value, ValueChanged<bool> onChanged) {
     return AppListRow(
       dense: true,
       title: label,
@@ -95,11 +95,30 @@ class _GeneratorPanelState extends ConsumerState<GeneratorPanel> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  'New password',
-                  style: AppTextStyles.label.copyWith(color: c.textSecondary),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'New password',
+                        style: AppTextStyles.label.copyWith(
+                          color: c.textSecondary,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Regenerate',
+                      onPressed: _regenerate,
+                      style: IconButton.styleFrom(
+                        backgroundColor: c.surfaceAlt,
+                      ),
+                      icon: Icon(
+                        Icons.refresh_rounded,
+                        color: c.textPrimary,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: AppSpacing.md),
+                const SizedBox(height: AppSpacing.xs),
                 ConstrainedBox(
                   constraints: const BoxConstraints(minHeight: 64),
                   child: AnimatedSwitcher(
@@ -142,30 +161,15 @@ class _GeneratorPanelState extends ConsumerState<GeneratorPanel> {
                   ],
                 ),
                 const SizedBox(height: AppSpacing.smd),
-                StrengthMeter(password: _password, showEntropy: false),
+                StrengthMeter(password: _password, showCaption: false),
                 const SizedBox(height: AppSpacing.mdl),
-                Row(
-                  children: [
-                    Expanded(
-                      child: VaultButton(
-                        label: 'Regenerate',
-                        icon: Icons.refresh_rounded,
-                        variant: VaultButtonVariant.secondary,
-                        onPressed: _regenerate,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.smd),
-                    Expanded(
-                      child: VaultButton(
-                        label: 'Copy',
-                        icon: Icons.copy_rounded,
-                        variant: widget.onUse == null
-                            ? VaultButtonVariant.primary
-                            : VaultButtonVariant.secondary,
-                        onPressed: _copy,
-                      ),
-                    ),
-                  ],
+                VaultButton(
+                  label: 'Copy password',
+                  icon: Icons.copy_rounded,
+                  variant: widget.onUse == null
+                      ? VaultButtonVariant.primary
+                      : VaultButtonVariant.secondary,
+                  onPressed: _copy,
                 ),
               ],
             ),
@@ -218,11 +222,10 @@ class _GeneratorPanelState extends ConsumerState<GeneratorPanel> {
         RowGroup(
           separatorIndent: AppSpacing.md,
           children: [
-            _toggle('Uppercase letters', 'A–Z', _uppercase,
-                (v) => _uppercase = v),
+            _toggle(
+                'Uppercase letters', 'A–Z', _uppercase, (v) => _uppercase = v),
             _toggle('Numbers', '0–9', _numbers, (v) => _numbers = v),
-            _toggle('Symbols', '! @ # \$ % & *', _symbols,
-                (v) => _symbols = v),
+            _toggle('Symbols', '! @ # \$ % & *', _symbols, (v) => _symbols = v),
           ],
         ),
         if (widget.onUse != null) ...[

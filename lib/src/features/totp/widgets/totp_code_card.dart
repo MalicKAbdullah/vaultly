@@ -152,8 +152,8 @@ class _TotpCodeCardState extends ConsumerState<TotpCodeCard>
                     const SizedBox(height: 2),
                     Text(
                       'Tap to copy',
-                      style: AppTextStyles.caption
-                          .copyWith(color: c.textTertiary),
+                      style:
+                          AppTextStyles.caption.copyWith(color: c.textTertiary),
                     ),
                   ],
                 ),
@@ -188,8 +188,8 @@ class _TotpCodeCardState extends ConsumerState<TotpCodeCard>
                             ),
                             Text(
                               '${remaining.ceil()}',
-                              style: AppTextStyles.number
-                                  .copyWith(color: urgent ? ink : c.textPrimary),
+                              style: AppTextStyles.number.copyWith(
+                                  color: urgent ? ink : c.textPrimary),
                             ),
                           ],
                         ),

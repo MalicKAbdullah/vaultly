@@ -306,7 +306,8 @@ class _CardTitle extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: AppTextStyles.h3.copyWith(color: c.textPrimary)),
+              Text(title,
+                  style: AppTextStyles.h3.copyWith(color: c.textPrimary)),
               const SizedBox(height: 4),
               Text(
                 body,

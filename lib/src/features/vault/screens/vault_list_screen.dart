@@ -250,14 +250,20 @@ class _VaultListScreenState extends ConsumerState<VaultListScreen> {
           _group(
             'Favorites',
             null,
-            [for (final e in entries) if (e.favorite) e],
+            [
+              for (final e in entries)
+                if (e.favorite) e
+            ],
           ),
         )
         ..addAll(
           _group(
             entries.any((e) => e.favorite) ? 'Everything else' : 'All items',
             query.sort.label,
-            [for (final e in entries) if (!e.favorite) e],
+            [
+              for (final e in entries)
+                if (!e.favorite) e
+            ],
           ),
         );
     } else {
@@ -578,9 +584,8 @@ class _Overview extends ConsumerWidget {
                   value: _Fraction(strong, withPassword.length),
                   caption: 'passwords',
                   visual: AppProgressBar(
-                    value: withPassword.isEmpty
-                        ? 0
-                        : strong / withPassword.length,
+                    value:
+                        withPassword.isEmpty ? 0 : strong / withPassword.length,
                     color: c.positive,
                   ),
                 ),

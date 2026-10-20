@@ -13,8 +13,7 @@ class VaultKeyApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'Vaultly',
       theme: AppTheme.build(Brightness.light, accent: AppAccents.vaultly),
-      darkTheme:
-          AppTheme.build(Brightness.dark, accent: AppAccents.vaultly),
+      darkTheme: AppTheme.build(Brightness.dark, accent: AppAccents.vaultly),
       themeMode: ThemeMode.system,
       routerConfig: router,
       debugShowCheckedModeBanner: false,

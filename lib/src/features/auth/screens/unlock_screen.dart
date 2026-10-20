@@ -205,16 +205,18 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
             ),
           ),
           SafeArea(
-            child: LayoutBuilder(
-              builder: (context, box) => SingleChildScrollView(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: box.maxHeight),
-                  child: IntrinsicHeight(
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 420),
+            child: Center(
+              child: ConstrainedBox(
+                // Width is bounded outside IntrinsicHeight so the column is
+                // measured at the width it is laid out at.
+                constraints: const BoxConstraints(maxWidth: 468),
+                child: LayoutBuilder(
+                  builder: (context, box) => SingleChildScrollView(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(minHeight: box.maxHeight),
+                      child: IntrinsicHeight(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
@@ -239,8 +241,7 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
                                       ),
                                       Text(
                                         'Enter your master password to unlock.',
-                                        style:
-                                            AppTextStyles.bodySmall.copyWith(
+                                        style: AppTextStyles.bodySmall.copyWith(
                                           color: c.textSecondary,
                                         ),
                                       ),

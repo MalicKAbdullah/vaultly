@@ -8,11 +8,15 @@ class StrengthMeter extends StatelessWidget {
   const StrengthMeter({
     required this.password,
     this.showEntropy = true,
+    this.showCaption = true,
     super.key,
   });
 
   final String password;
   final bool showEntropy;
+
+  /// The verdict and entropy line under the bar; off shows the bar alone.
+  final bool showCaption;
 
   static Color colorFor(StrengthLevel level, SuiteColors c) => switch (level) {
         StrengthLevel.weak => c.negative,
@@ -57,25 +61,27 @@ class StrengthMeter extends StatelessWidget {
               ],
             ],
           ),
-          const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              Text(
-                empty ? 'Strength' : strength.level.label,
-                style: AppTextStyles.labelStrong.copyWith(
-                  color: empty ? c.textTertiary : color,
-                ),
-              ),
-              const Spacer(),
-              if (showEntropy && !empty)
+          if (showCaption) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
                 Text(
-                  '${strength.bits.round()} bits of entropy',
-                  style: AppTextStyles.numberSmall.copyWith(
-                    color: c.textSecondary,
+                  empty ? 'Strength' : strength.level.label,
+                  style: AppTextStyles.labelStrong.copyWith(
+                    color: empty ? c.textTertiary : color,
                   ),
                 ),
-            ],
-          ),
+                const Spacer(),
+                if (showEntropy && !empty)
+                  Text(
+                    '${strength.bits.round()} bits of entropy',
+                    style: AppTextStyles.numberSmall.copyWith(
+                      color: c.textSecondary,
+                    ),
+                  ),
+              ],
+            ),
+          ],
         ],
       ),
     );
