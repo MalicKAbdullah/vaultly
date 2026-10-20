@@ -15,13 +15,19 @@ import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
 final class FakeSecureStorage implements ISecureStorage {
   final Map<String, String> store = {};
 
+  /// Every key read, in order — for asserting what the unlock path touches.
+  final List<String> reads = [];
+
   @override
   Future<void> write({required String key, required String value}) async {
     store[key] = value;
   }
 
   @override
-  Future<String?> read({required String key}) async => store[key];
+  Future<String?> read({required String key}) async {
+    reads.add(key);
+    return store[key];
+  }
 
   @override
   Future<void> delete({required String key}) async {
@@ -130,11 +136,17 @@ final class FakeBiometricAuthenticator implements IBiometricAuthenticator {
   bool supported;
   bool result;
 
+  /// Runs as the prompt goes up, before [result] is returned.
+  void Function()? onPrompt;
+
   @override
   Future<bool> isSupported() async => supported;
 
   @override
-  Future<bool> authenticate(String reason) async => result;
+  Future<bool> authenticate(String reason) async {
+    onPrompt?.call();
+    return result;
+  }
 }
 
 /// Scripted autofill platform bridge; records what Flutter handed back.
