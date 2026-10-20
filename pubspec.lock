@@ -107,6 +107,15 @@ packages:
       url: "https://github.com/MalicKAbdullah/secure-suite-core.git"
     source: git
     version: "0.0.1"
+  core_lock:
+    dependency: "direct main"
+    description:
+      path: core_lock
+      ref: cbb18027fe47f685caff8d2252212d8042f1e45c
+      resolved-ref: cbb18027fe47f685caff8d2252212d8042f1e45c
+      url: "https://github.com/MalicKAbdullah/secure-suite-core.git"
+    source: git
+    version: "0.3.0"
   core_notify:
     dependency: "direct main"
     description:

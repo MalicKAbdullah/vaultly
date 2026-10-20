@@ -64,6 +64,11 @@ dependencies:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_ui
       ref: cbb18027fe47f685caff8d2252212d8042f1e45c
+  core_lock:
+    git:
+      url: https://github.com/MalicKAbdullah/secure-suite-core.git
+      path: core_lock
+      ref: cbb18027fe47f685caff8d2252212d8042f1e45c
   core_backup:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
