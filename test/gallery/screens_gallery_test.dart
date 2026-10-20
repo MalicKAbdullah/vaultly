@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vaultkey/src/core/di.dart';
+import 'package:vaultkey/src/core/interfaces/biometric_key_vault.dart';
 import 'package:vaultkey/src/core/shell/home_shell.dart';
 import 'package:vaultkey/src/features/auth/screens/onboarding_screen.dart';
 import 'package:vaultkey/src/features/auth/screens/setup_screen.dart';
@@ -428,6 +429,10 @@ void main() {
       await BiometricUnlockService(
         storage: storage,
         authenticator: biometrics,
+        vault: SecureStorageKeyVault(
+          storage: storage,
+          authenticator: FakeBiometricAuthenticator(),
+        ),
       ).enable(unlocked.key);
     });
     await _render(
