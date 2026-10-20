@@ -7,6 +7,7 @@ import 'package:core_storage/core_storage.dart';
 import 'package:core_update/core_update.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:vaultkey/src/core/app_info.dart';
 import 'package:vaultkey/src/core/clock.dart';
 import 'package:vaultkey/src/core/interfaces/autofill_bridge.dart';
 import 'package:vaultkey/src/core/interfaces/biometric_key_vault.dart';
@@ -97,6 +98,7 @@ final backupCodecProvider = Provider<BackupCodec>(
   (ref) => BackupCodec(
     keyDerivation: ref.watch(keyDerivationProvider),
     cipher: ref.watch(cipherServiceProvider),
+    appVersion: () => ref.read(appVersionProvider.future),
   ),
 );
 
