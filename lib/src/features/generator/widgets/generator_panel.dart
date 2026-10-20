@@ -1,13 +1,16 @@
 import 'package:core_crypto/core_crypto.dart';
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vaultkey/src/core/di.dart';
+import 'package:vaultkey/src/core/ui/vault_ui.dart';
+import 'package:vaultkey/src/features/generator/services/strength_estimator.dart';
 import 'package:vaultkey/src/features/generator/widgets/strength_meter.dart';
 
-/// The password generator UI: live preview, length slider, character-class
-/// toggles, regenerate, copy, and an optional "use this password" action for
-/// the entry editor.
+/// The password generator: the password large in mono with digits and
+/// symbols picked out, its live entropy, length and character classes, and
+/// an optional "Use this password" action for the entry editor.
 class GeneratorPanel extends ConsumerStatefulWidget {
   const GeneratorPanel({this.onUse, super.key});
 
@@ -19,11 +22,14 @@ class GeneratorPanel extends ConsumerStatefulWidget {
 }
 
 class _GeneratorPanelState extends ConsumerState<GeneratorPanel> {
-  double _length = 20;
+  int _length = 20;
   bool _uppercase = true;
   bool _numbers = true;
   bool _symbols = true;
   String _password = '';
+
+  static const _minLength = 8;
+  static const _maxLength = 64;
 
   @override
   void initState() {
@@ -34,7 +40,7 @@ class _GeneratorPanelState extends ConsumerState<GeneratorPanel> {
   void _regenerate() {
     setState(() {
       _password = PasswordGenerator.generate(
-        length: _length.round(),
+        length: _length,
         includeUppercase: _uppercase,
         includeNumbers: _numbers,
         includeSymbols: _symbols,
@@ -43,104 +49,228 @@ class _GeneratorPanelState extends ConsumerState<GeneratorPanel> {
   }
 
   Future<void> _copy() async {
-    await ref.read(clipboardGuardProvider).copySensitive(_password);
+    final guard = ref.read(clipboardGuardProvider);
+    await guard.copySensitive(_password);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Password copied. It clears in 30 seconds.'),
-      ),
-    );
+    showCopiedSnack(context, what: 'Password', clearsAfter: guard.clearAfter);
   }
 
-  Widget _toggle(String label, bool value, ValueChanged<bool> onChanged) {
-    return SwitchListTile(
-      title: Text(label, style: AppTextStyles.label),
-      value: value,
-      contentPadding: EdgeInsets.zero,
-      onChanged: (v) {
-        onChanged(v);
+  Widget _toggle(String label, String example, bool value,
+      ValueChanged<bool> onChanged) {
+    return AppListRow(
+      dense: true,
+      title: label,
+      subtitle: example,
+      onTap: () {
+        onChanged(!value);
         _regenerate();
       },
+      trailing: Switch(
+        value: value,
+        onChanged: (v) {
+          onChanged(v);
+          _regenerate();
+        },
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final c = SuiteColors.of(context);
+    final strength = StrengthEstimator.estimate(_password);
+    final tone = StrengthMeter.colorFor(strength.level, c);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          decoration: BoxDecoration(
-            color: scheme.surface,
-            borderRadius: BorderRadius.circular(AppSpacing.borderRadiusLg),
-            border: Border.all(color: scheme.outline),
+        Material(
+          color: c.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+            side: BorderSide(color: c.hairline),
           ),
-          child: Column(
-            children: [
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 180),
-                child: Text(
-                  _password,
-                  key: ValueKey(_password),
-                  style: AppTextStyles.code.copyWith(fontSize: 18),
-                  textAlign: TextAlign.center,
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'New password',
+                  style: AppTextStyles.label.copyWith(color: c.textSecondary),
                 ),
+                const SizedBox(height: AppSpacing.md),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 64),
+                  child: AnimatedSwitcher(
+                    duration: AppMotion.fast,
+                    child: Semantics(
+                      key: ValueKey(_password),
+                      label: 'Generated password',
+                      child: _ColoredPassword(_password),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '${strength.bits.round()}',
+                      style: AppTextStyles.numberLarge.copyWith(
+                        color: c.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text(
+                        'bits of entropy',
+                        style: AppTextStyles.label.copyWith(
+                          color: c.textSecondary,
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text(
+                        strength.level.label,
+                        style: AppTextStyles.labelStrong.copyWith(color: tone),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.smd),
+                StrengthMeter(password: _password, showEntropy: false),
+                const SizedBox(height: AppSpacing.mdl),
+                Row(
+                  children: [
+                    Expanded(
+                      child: VaultButton(
+                        label: 'Regenerate',
+                        icon: Icons.refresh_rounded,
+                        variant: VaultButtonVariant.secondary,
+                        onPressed: _regenerate,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.smd),
+                    Expanded(
+                      child: VaultButton(
+                        label: 'Copy',
+                        icon: Icons.copy_rounded,
+                        variant: widget.onUse == null
+                            ? VaultButtonVariant.primary
+                            : VaultButtonVariant.secondary,
+                        onPressed: _copy,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.smd),
+        VaultCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    'Length',
+                    style: AppTextStyles.h4.copyWith(color: c.textPrimary),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '$_length',
+                    style: AppTextStyles.numberMedium.copyWith(
+                      color: c.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'characters',
+                    style: AppTextStyles.label.copyWith(
+                      color: c.textSecondary,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: AppSpacing.md),
-              StrengthMeter(password: _password),
+              Slider(
+                value: _length.toDouble(),
+                min: _minLength.toDouble(),
+                max: _maxLength.toDouble(),
+                divisions: _maxLength - _minLength,
+                label: '$_length',
+                semanticFormatterCallback: (v) => '${v.round()} characters',
+                onChanged: (v) {
+                  if (v.round() == _length) return;
+                  _length = v.round();
+                  _regenerate();
+                },
+              ),
             ],
           ),
         ),
-        const SizedBox(height: AppSpacing.md),
-        Row(
+        const SizedBox(height: AppSpacing.smd),
+        RowGroup(
+          separatorIndent: AppSpacing.md,
           children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _regenerate,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Regenerate'),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _copy,
-                icon: const Icon(Icons.copy_outlined),
-                label: const Text('Copy'),
-              ),
-            ),
+            _toggle('Uppercase letters', 'A–Z', _uppercase,
+                (v) => _uppercase = v),
+            _toggle('Numbers', '0–9', _numbers, (v) => _numbers = v),
+            _toggle('Symbols', '! @ # \$ % & *', _symbols,
+                (v) => _symbols = v),
           ],
         ),
-        const SizedBox(height: AppSpacing.lg),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text('Length', style: AppTextStyles.labelStrong),
-            Text('${_length.round()}', style: AppTextStyles.number),
-          ],
-        ),
-        Slider(
-          value: _length,
-          min: 8,
-          max: 64,
-          divisions: 56,
-          onChanged: (v) => setState(() => _length = v),
-          onChangeEnd: (_) => _regenerate(),
-        ),
-        _toggle('Uppercase letters (A–Z)', _uppercase, (v) => _uppercase = v),
-        _toggle('Numbers (0–9)', _numbers, (v) => _numbers = v),
-        _toggle('Symbols (!@#…)', _symbols, (v) => _symbols = v),
         if (widget.onUse != null) ...[
-          const SizedBox(height: AppSpacing.md),
-          FilledButton.icon(
+          const SizedBox(height: AppSpacing.mdl),
+          VaultButton(
+            label: 'Use this password',
+            icon: Icons.check_rounded,
             onPressed: () => widget.onUse!(_password),
-            icon: const Icon(Icons.check),
-            label: const Text('Use this password'),
           ),
         ],
       ],
+    );
+  }
+}
+
+/// The password in large mono; digits take the accent and symbols the
+/// secondary ink, so a password read aloud or retyped is unambiguous.
+class _ColoredPassword extends StatelessWidget {
+  const _ColoredPassword(this.password);
+
+  final String password;
+
+  static final _digit = RegExp('[0-9]');
+  static final _letter = RegExp('[a-zA-Z]');
+
+  @override
+  Widget build(BuildContext context) {
+    final c = SuiteColors.of(context);
+    final base = AppTextStyles.codeLarge.copyWith(
+      color: c.textPrimary,
+      height: 1.4,
+      letterSpacing: 0.5,
+    );
+    return Text.rich(
+      TextSpan(
+        children: [
+          for (final ch in password.split(''))
+            TextSpan(
+              text: ch,
+              style: _digit.hasMatch(ch)
+                  ? base.copyWith(color: c.accent)
+                  : _letter.hasMatch(ch)
+                      ? base
+                      : base.copyWith(color: c.textSecondary),
+            ),
+        ],
+      ),
+      style: base,
     );
   }
 }
