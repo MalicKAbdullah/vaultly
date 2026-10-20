@@ -150,121 +150,172 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final c = SuiteColors.of(context);
     final preview = _preview;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Import')),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.gutter,
+          AppSpacing.sm,
+          AppSpacing.gutter,
+          AppSpacing.xl,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('Vaultly backup', style: AppTextStyles.h3),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              'Restore a .vkbackup file using the passphrase it was '
-              'created with.',
-              style: AppTextStyles.bodySmall
-                  .copyWith(color: scheme.onSurfaceVariant),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            OutlinedButton.icon(
-              onPressed: _pickBackup,
-              icon: const Icon(Icons.file_open_outlined),
-              label: Text(
-                _file == null ? 'Choose backup file' : _file!.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+            VaultCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _CardTitle(
+                    icon: Icons.restore_rounded,
+                    color: c.accent,
+                    title: 'Vaultly backup',
+                    body: 'Restore a .vkbackup file using the passphrase it '
+                        'was created with.',
+                  ),
+                  const SizedBox(height: AppSpacing.mdl),
+                  VaultButton(
+                    label: _file == null ? 'Choose backup file' : _file!.name,
+                    icon: Icons.file_open_outlined,
+                    variant: VaultButtonVariant.secondary,
+                    onPressed: _pickBackup,
+                  ),
+                  if (preview != null) ...[
+                    const SizedBox(height: AppSpacing.md),
+                    AppBanner(
+                      kind: BannerKind.info,
+                      icon: Icons.inventory_2_outlined,
+                      title: '${preview.entryCount} '
+                          'entr${preview.entryCount == 1 ? 'y' : 'ies'}',
+                      message: 'Backed up '
+                          '${DateFormat.yMMMd().add_jm().format(preview.createdAt.toLocal())}',
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    AppTextField(
+                      label: 'Backup passphrase',
+                      controller: _passphraseController,
+                      obscureText: true,
+                      errorText: _error,
+                      onChanged: (_) => setState(() => _error = null),
+                      onSubmitted: (_) => _import(),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    AppSegmentedControl<ImportMode>(
+                      height: 44,
+                      segments: const [
+                        AppSegment(
+                          value: ImportMode.merge,
+                          label: 'Merge',
+                          icon: Icons.merge_type_rounded,
+                        ),
+                        AppSegment(
+                          value: ImportMode.replace,
+                          label: 'Replace',
+                          icon: Icons.swap_horiz_rounded,
+                        ),
+                      ],
+                      selected: _mode,
+                      onChanged: (mode) => setState(() => _mode = mode),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      _mode == ImportMode.merge
+                          ? 'Keeps everything; when an entry exists in both, '
+                              'the newer version wins.'
+                          : 'Deletes the current vault and restores only the '
+                              'backup.',
+                      style: AppTextStyles.caption.copyWith(
+                        color: _mode == ImportMode.replace
+                            ? c.negative
+                            : c.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    VaultButton(
+                      label: 'Import backup',
+                      isLoading: _busy,
+                      onPressed: _busy ? null : _import,
+                    ),
+                  ] else if (_error != null) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      _error!,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: c.negative,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
-            if (preview != null) ...[
-              const SizedBox(height: AppSpacing.md),
-              Card(
-                child: ListTile(
-                  leading:
-                      Icon(Icons.inventory_2_outlined, color: scheme.primary),
-                  title: Text(
-                    '${preview.entryCount} '
-                    'entr${preview.entryCount == 1 ? 'y' : 'ies'}',
-                    style: AppTextStyles.h4,
+            const SizedBox(height: AppSpacing.smd),
+            VaultCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _CardTitle(
+                    icon: Icons.table_chart_outlined,
+                    color: c.info,
+                    title: 'CSV from another app',
+                    body: 'Works with exports from Chrome, Bitwarden, and '
+                        'most other password managers.',
                   ),
-                  subtitle: Text(
-                    'Backed up '
-                    '${DateFormat.yMMMd().add_jm().format(preview.createdAt.toLocal())}',
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              VaultTextField(
-                label: 'Backup passphrase',
-                controller: _passphraseController,
-                obscureText: true,
-                errorText: _error,
-                onChanged: (_) => setState(() => _error = null),
-                onSubmitted: (_) => _import(),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              SegmentedButton<ImportMode>(
-                segments: const [
-                  ButtonSegment(
-                    value: ImportMode.merge,
-                    label: Text('Merge'),
-                    icon: Icon(Icons.merge_type),
-                  ),
-                  ButtonSegment(
-                    value: ImportMode.replace,
-                    label: Text('Replace'),
-                    icon: Icon(Icons.swap_horiz),
+                  const SizedBox(height: AppSpacing.mdl),
+                  VaultButton(
+                    label: 'Choose CSV file',
+                    icon: Icons.upload_file_rounded,
+                    variant: VaultButtonVariant.secondary,
+                    onPressed: _importCsv,
                   ),
                 ],
-                selected: {_mode},
-                onSelectionChanged: (selection) =>
-                    setState(() => _mode = selection.first),
               ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                _mode == ImportMode.merge
-                    ? 'Keeps everything; when an entry exists in both, the '
-                        'newer version wins.'
-                    : 'Deletes the current vault and restores only the '
-                        'backup.',
-                style: AppTextStyles.caption
-                    .copyWith(color: scheme.onSurfaceVariant),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              VaultButton(
-                label: 'Import backup',
-                isLoading: _busy,
-                onPressed: _busy ? null : _import,
-              ),
-            ] else if (_error != null) ...[
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                _error!,
-                style: AppTextStyles.bodySmall.copyWith(color: scheme.error),
-              ),
-            ],
-            const SizedBox(height: AppSpacing.xl),
-            const Divider(),
-            const SizedBox(height: AppSpacing.lg),
-            const Text('CSV from another app', style: AppTextStyles.h3),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              'Works with exports from Chrome, Bitwarden, and most other '
-              'password managers.',
-              style: AppTextStyles.bodySmall
-                  .copyWith(color: scheme.onSurfaceVariant),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            OutlinedButton.icon(
-              onPressed: _importCsv,
-              icon: const Icon(Icons.table_chart_outlined),
-              label: const Text('Choose CSV file'),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Icon badge, title and explanation at the top of an import card.
+class _CardTitle extends StatelessWidget {
+  const _CardTitle({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.body,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = SuiteColors.of(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        IconBadge(icon: icon, color: color, size: 44),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: AppTextStyles.h3.copyWith(color: c.textPrimary)),
+              const SizedBox(height: 4),
+              Text(
+                body,
+                style: AppTextStyles.bodySmall.copyWith(color: c.textSecondary),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

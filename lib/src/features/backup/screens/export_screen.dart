@@ -129,84 +129,146 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final c = SuiteColors.of(context);
     final entryCount =
         (ref.watch(vaultEntriesProvider).valueOrNull ?? const []).length;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Export')),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.gutter,
+          AppSpacing.sm,
+          AppSpacing.gutter,
+          AppSpacing.xl,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('Encrypted backup', style: AppTextStyles.h3),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              'Protects all $entryCount entries with a passphrase of its '
-              'own. This is the safe way to move or back up your vault.',
-              style: AppTextStyles.bodySmall
-                  .copyWith(color: scheme.onSurfaceVariant),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            VaultTextField(
-              label: 'Backup passphrase',
-              controller: _passphraseController,
-              obscureText: true,
-              hint: 'At least 8 characters',
-              onChanged: (_) => setState(() => _error = null),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            StrengthMeter(password: _passphraseController.text),
-            const SizedBox(height: AppSpacing.md),
-            VaultTextField(
-              label: 'Confirm passphrase',
-              controller: _confirmController,
-              obscureText: true,
-              errorText: _error,
-              onChanged: (_) => setState(() => _error = null),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _busy ? null : _shareBackup,
-                    icon: const Icon(Icons.ios_share),
-                    label: const Text('Share'),
+            VaultCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _CardTitle(
+                    icon: Icons.lock_rounded,
+                    color: c.accent,
+                    title: 'Encrypted backup',
+                    body: 'Protects all $entryCount entries with a passphrase '
+                        'of its own. This is the safe way to move or back up '
+                        'your vault.',
                   ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: _busy ? null : _saveBackup,
-                    icon: const Icon(Icons.folder_outlined),
-                    label: const Text('Save to folder'),
+                  const SizedBox(height: AppSpacing.mdl),
+                  AppTextField(
+                    label: 'Backup passphrase',
+                    controller: _passphraseController,
+                    obscureText: true,
+                    hint: 'At least 8 characters',
+                    onChanged: (_) => setState(() => _error = null),
                   ),
-                ),
-              ],
+                  const SizedBox(height: AppSpacing.smd),
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+                    child: StrengthMeter(password: _passphraseController.text),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  AppTextField(
+                    label: 'Confirm passphrase',
+                    controller: _confirmController,
+                    obscureText: true,
+                    errorText: _error,
+                    onChanged: (_) => setState(() => _error = null),
+                  ),
+                  const SizedBox(height: AppSpacing.mdl),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: VaultButton(
+                          label: 'Share',
+                          icon: Icons.ios_share_rounded,
+                          variant: VaultButtonVariant.secondary,
+                          onPressed: _busy ? null : _shareBackup,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.smd),
+                      Expanded(
+                        child: VaultButton(
+                          label: 'Save to folder',
+                          icon: Icons.folder_outlined,
+                          onPressed: _busy ? null : _saveBackup,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: AppSpacing.xl),
-            const Divider(),
-            const SizedBox(height: AppSpacing.lg),
-            const Text('Plain CSV', style: AppTextStyles.h3),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              'For moving to another password manager. The file is not '
-              'protected — treat it like a written-down list of all your '
-              'passwords.',
-              style: AppTextStyles.bodySmall
-                  .copyWith(color: scheme.onSurfaceVariant),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            OutlinedButton.icon(
-              onPressed: _exportCsv,
-              icon: const Icon(Icons.table_chart_outlined),
-              label: const Text('Export CSV'),
+            const SizedBox(height: AppSpacing.smd),
+            VaultCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _CardTitle(
+                    icon: Icons.table_chart_outlined,
+                    color: c.warning,
+                    title: 'Plain CSV',
+                    body: 'For moving to another password manager. The file '
+                        'is not protected — treat it like a written-down '
+                        'list of all your passwords.',
+                  ),
+                  const SizedBox(height: AppSpacing.mdl),
+                  VaultButton(
+                    label: 'Export CSV',
+                    icon: Icons.download_rounded,
+                    variant: VaultButtonVariant.secondary,
+                    onPressed: _exportCsv,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Icon badge, title and explanation at the top of a backup card.
+class _CardTitle extends StatelessWidget {
+  const _CardTitle({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.body,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = SuiteColors.of(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        IconBadge(icon: icon, color: color, size: 44),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: AppTextStyles.h3.copyWith(color: c.textPrimary)),
+              const SizedBox(height: 4),
+              Text(
+                body,
+                style: AppTextStyles.bodySmall.copyWith(color: c.textSecondary),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
