@@ -59,12 +59,12 @@ final class SessionNotifier extends Notifier<AuthStatus> {
   /// Biometric unlock path: the wrapped key is released by the platform
   /// prompt; the salt comes from secure storage.
   Future<bool> unlockWithBiometrics() async {
-    final bio = ref.read(biometricServiceProvider);
-    final key = await bio.tryUnlock();
-    if (key == null) return false;
-    final saltRaw =
-        await ref.read(secureStorageProvider).read(key: VaultKeyKeys.salt);
-    if (saltRaw == null) return false;
+    // The salt is not secret: fetch it while the prompt is up so only the
+    // key read is left once the fingerprint matches.
+    final salt = ref.read(secureStorageProvider).read(key: VaultKeyKeys.salt);
+    final key = await ref.read(biometricServiceProvider).tryUnlock();
+    final saltRaw = await salt;
+    if (key == null || saltRaw == null) return false;
     _adopt(
       UnlockSuccess(
         key: key,

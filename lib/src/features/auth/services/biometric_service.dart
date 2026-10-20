@@ -37,6 +37,9 @@ final class LocalAuthBiometric implements IBiometricAuthenticator {
         options: const AuthenticationOptions(
           biometricOnly: true,
           stickyAuth: true,
+          // Unlocking is not a sensitive transaction: without this, Android
+          // makes face unlock wait for an extra "Confirm" tap.
+          sensitiveTransaction: false,
         ),
       );
     } catch (_) {
@@ -80,9 +83,12 @@ final class BiometricUnlockService {
   }
 
   /// Shows the biometric prompt and, on success, returns the vault key.
-  /// Returns null when cancelled, failed, or not enabled.
+  /// Returns null when cancelled, failed, or no key is stored (disabled).
+  ///
+  /// The caller has already read [isEnabled] to offer biometrics, so the
+  /// prompt goes up without another secure-storage round trip; the stored
+  /// key itself is the authority and is read only after the prompt succeeds.
   Future<Uint8List?> tryUnlock() async {
-    if (!await isEnabled()) return null;
     final ok = await _authenticator.authenticate('Unlock your vault');
     if (!ok) return null;
     final raw = await _storage.read(key: VaultKeyKeys.biometricKey);

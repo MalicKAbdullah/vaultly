@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vaultkey/src/core/di.dart';
+import 'package:vaultkey/src/core/storage_keys.dart';
 import 'package:vaultkey/src/features/auth/providers/auth_providers.dart';
 import 'package:vaultkey/src/features/auth/screens/unlock_screen.dart';
 import 'package:vaultkey/src/features/auth/services/biometric_service.dart';
@@ -115,6 +116,24 @@ void main() {
     await pumpUnlock(tester, biometrics: biometrics);
     // No tap: the prompt fired automatically and unlocked the session.
     expect(containerOf(tester).read(sessionProvider), AuthStatus.unlocked);
+  });
+
+  testWidgets('once the fingerprint matches, only the wrapped key is read',
+      (tester) async {
+    final biometrics = await enableBiometrics();
+    late int readsAtPrompt;
+    biometrics.onPrompt = () => readsAtPrompt = storage.reads.length;
+    await pumpUnlock(tester, biometrics: biometrics);
+
+    expect(containerOf(tester).read(sessionProvider), AuthStatus.unlocked);
+    final afterPrompt = storage.reads.sublist(readsAtPrompt);
+    expect(afterPrompt, contains(VaultKeyKeys.biometricKey));
+    expect(afterPrompt, isNot(contains(VaultKeyKeys.salt)));
+    // The enabled flag is read once to offer the prompt, not again inside it.
+    expect(
+      storage.reads.where((k) => k == VaultKeyKeys.biometricEnabled),
+      hasLength(1),
+    );
   });
 
   testWidgets('the button retries after the auto-prompt fails', (tester) async {

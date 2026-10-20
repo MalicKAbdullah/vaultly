@@ -47,23 +47,27 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
     Future.microtask(_init);
   }
 
+  /// Reads the cooldown and the persisted "biometric enabled" flag while
+  /// probing the hardware — all at once, since the prompt waits on every one
+  /// of them — then auto-triggers the prompt once. Runs every time this
+  /// locked screen is created: cold start, inactivity lock, or returning to
+  /// a locked vault.
   Future<void> _init() async {
-    await _checkExistingCooldown();
-    await _initBiometrics();
-  }
-
-  /// Loads the persisted "biometric enabled" flag (fast, no capability
-  /// probe), shows the button, then probes hardware and auto-triggers the
-  /// prompt once. Runs every time this locked screen is created — cold
-  /// start, inactivity lock, or returning to a locked vault.
-  Future<void> _initBiometrics() async {
     final service = ref.read(biometricServiceProvider);
-    final enabled = await service.isEnabled();
-    if (!mounted) return;
-    setState(() => _biometricEnabled = enabled);
-    if (!enabled) return;
+    final cooldown = ref.read(masterAuthServiceProvider).cooldownRemaining();
+    final enabled = service.isEnabled();
+    final support = service.isSupported();
 
-    final supported = await service.isSupported();
+    final remaining = await cooldown;
+    if (!mounted) return;
+    if (remaining > Duration.zero) _startCooldown(remaining);
+
+    final isEnabled = await enabled;
+    if (!mounted) return;
+    setState(() => _biometricEnabled = isEnabled);
+    if (!isEnabled) return;
+
+    final supported = await support;
     if (!mounted) return;
     setState(() {
       _biometricSupported = supported;
@@ -83,12 +87,6 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
     _countdown?.cancel();
     _passwordController.dispose();
     super.dispose();
-  }
-
-  Future<void> _checkExistingCooldown() async {
-    final remaining =
-        await ref.read(masterAuthServiceProvider).cooldownRemaining();
-    if (remaining > Duration.zero) _startCooldown(remaining);
   }
 
   void _startCooldown(Duration duration) {
