@@ -1,7 +1,9 @@
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vaultkey/src/core/di.dart';
+import 'package:vaultkey/src/core/ui/vault_ui.dart';
 import 'package:vaultkey/src/features/totp/models/totp_config.dart';
 import 'package:vaultkey/src/features/totp/services/totp_generator.dart';
 
@@ -75,45 +77,43 @@ class _TotpCodeCardState extends ConsumerState<TotpCodeCard>
   Future<void> _copy() async {
     final code = _code;
     if (code == null) return;
-    await ref.read(clipboardGuardProvider).copySensitive(code);
+    final guard = ref.read(clipboardGuardProvider);
+    await guard.copySensitive(code);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Code copied. It clears in 30 seconds.'),
-      ),
-    );
+    showCopiedSnack(context, what: 'Code', clearsAfter: guard.clearAfter);
   }
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final c = SuiteColors.of(context);
 
     if (_broken) {
-      return Card(
-        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Text(
-            'The two-factor secret saved for this entry is not readable. '
+      return const AppBanner(
+        title: 'Two-factor code unavailable',
+        message: 'The two-factor secret saved for this entry is not readable. '
             'Edit the entry and set it up again.',
-            style: AppTextStyles.bodySmall.copyWith(color: scheme.error),
-          ),
-        ),
+        kind: BannerKind.error,
       );
     }
 
     final code = _code;
     if (code == null) return const SizedBox.shrink();
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+    return Material(
+      color: c.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        side: BorderSide(color: c.hairline),
+      ),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: _copy,
-        borderRadius: BorderRadius.circular(AppSpacing.borderRadius),
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.sm,
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.mdl,
+            AppSpacing.md,
+            AppSpacing.mdl,
+            AppSpacing.md,
           ),
           child: Row(
             children: [
@@ -124,11 +124,11 @@ class _TotpCodeCardState extends ConsumerState<TotpCodeCard>
                     Text(
                       'Two-factor code',
                       style: AppTextStyles.caption
-                          .copyWith(color: scheme.onSurfaceVariant),
+                          .copyWith(color: c.textSecondary),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 4),
                     AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 250),
+                      duration: AppMotion.base,
                       transitionBuilder: (child, animation) => FadeTransition(
                         opacity: animation,
                         child: SlideTransition(
@@ -142,14 +142,18 @@ class _TotpCodeCardState extends ConsumerState<TotpCodeCard>
                       child: Text(
                         TotpGenerator.group(code),
                         key: ValueKey(code),
-                        style: AppTextStyles.numberLarge
-                            .copyWith(color: scheme.primary),
+                        style: AppTextStyles.numberLarge.copyWith(
+                          color: c.textPrimary,
+                          fontSize: 36,
+                          letterSpacing: 1,
+                        ),
                       ),
                     ),
+                    const SizedBox(height: 2),
                     Text(
                       'Tap to copy',
-                      style: AppTextStyles.caption
-                          .copyWith(color: scheme.onSurfaceVariant),
+                      style:
+                          AppTextStyles.caption.copyWith(color: c.textTertiary),
                     ),
                   ],
                 ),
@@ -162,28 +166,33 @@ class _TotpCodeCardState extends ConsumerState<TotpCodeCard>
                   builder: (context, _) {
                     final remaining =
                         widget.config.period * (1 - _controller.value);
-                    return SizedBox(
-                      width: 44,
-                      height: 44,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          SizedBox(
-                            width: 44,
-                            height: 44,
-                            child: CircularProgressIndicator(
-                              value: 1 - _controller.value,
-                              strokeWidth: 4,
-                              backgroundColor:
-                                  scheme.primary.withValues(alpha: 0.15),
+                    final urgent = remaining <= 5;
+                    final ink = urgent ? c.negative : c.accent;
+                    return Semantics(
+                      label: '${remaining.ceil()} seconds left',
+                      excludeSemantics: true,
+                      child: SizedBox.square(
+                        dimension: 56,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            SizedBox.square(
+                              dimension: 56,
+                              child: CircularProgressIndicator(
+                                value: 1 - _controller.value,
+                                strokeWidth: 4,
+                                strokeCap: StrokeCap.round,
+                                color: ink,
+                                backgroundColor: c.surfaceAlt,
+                              ),
                             ),
-                          ),
-                          Text(
-                            '${remaining.ceil()}',
-                            style: AppTextStyles.numberSmall
-                                .copyWith(color: scheme.onSurfaceVariant),
-                          ),
-                        ],
+                            Text(
+                              '${remaining.ceil()}',
+                              style: AppTextStyles.number.copyWith(
+                                  color: urgent ? ink : c.textPrimary),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   },

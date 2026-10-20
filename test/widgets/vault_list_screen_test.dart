@@ -1,3 +1,4 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -5,6 +6,7 @@ import 'package:vaultkey/src/core/di.dart';
 import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
 import 'package:vaultkey/src/features/vault/providers/vault_providers.dart';
 import 'package:vaultkey/src/features/vault/screens/vault_list_screen.dart';
+import 'package:vaultkey/src/features/vault/widgets/entry_tile.dart';
 
 import '../fakes/fakes.dart';
 import 'helpers.dart';
@@ -40,6 +42,10 @@ void main() {
     WidgetTester tester, {
     List<VaultEntry>? seed,
   }) async {
+    // A tall phone, so the overview and every row are laid out at once.
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(430, 2400);
+    addTearDown(tester.view.reset);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -94,7 +100,7 @@ void main() {
 
   testWidgets('favorites filter keeps only starred entries', (tester) async {
     await pumpList(tester);
-    await tester.tap(find.text('Favorites'));
+    await tester.tap(find.widgetWithText(AppChip, 'Favorites'));
     await tester.pumpAndSettle();
 
     expect(find.text('Bank of Dartland'), findsOneWidget);
@@ -103,7 +109,9 @@ void main() {
 
   testWidgets('category filter keeps only that category', (tester) async {
     await pumpList(tester);
-    await tester.tap(find.text('Card'));
+    await tester.ensureVisible(find.widgetWithText(AppChip, 'Card'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(AppChip, 'Card'));
     await tester.pumpAndSettle();
 
     expect(find.text('Bank of Dartland'), findsOneWidget);
@@ -124,7 +132,12 @@ void main() {
       (tester) async {
     await pumpList(tester);
     // Open the overflow menu on the first tile (GitHub, most recent).
-    await tester.tap(find.byIcon(Icons.more_vert).first);
+    await tester.tap(
+      find.descendant(
+        of: find.widgetWithText(EntryTile, 'GitHub'),
+        matching: find.byIcon(Icons.more_vert),
+      ),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Delete'));
     await tester.pumpAndSettle();

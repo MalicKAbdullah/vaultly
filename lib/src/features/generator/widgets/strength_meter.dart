@@ -2,54 +2,88 @@ import 'package:core_theme/core_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:vaultkey/src/features/generator/services/strength_estimator.dart';
 
-/// A colored strength bar + label for a password.
+/// Four-step strength meter with its verdict and, optionally, the estimated
+/// entropy in bits.
 class StrengthMeter extends StatelessWidget {
-  const StrengthMeter({required this.password, super.key});
+  const StrengthMeter({
+    required this.password,
+    this.showEntropy = true,
+    this.showCaption = true,
+    super.key,
+  });
 
   final String password;
+  final bool showEntropy;
 
-  static Color colorFor(StrengthLevel level, Brightness brightness) =>
-      switch (level) {
-        StrengthLevel.weak => AppColors.error(brightness),
-        StrengthLevel.fair => AppColors.warning(brightness),
-        StrengthLevel.good => AppColors.info(brightness),
-        StrengthLevel.strong => AppColors.success(brightness),
+  /// The verdict and entropy line under the bar; off shows the bar alone.
+  final bool showCaption;
+
+  static Color colorFor(StrengthLevel level, SuiteColors c) => switch (level) {
+        StrengthLevel.weak => c.negative,
+        StrengthLevel.fair => c.warning,
+        StrengthLevel.good => c.info,
+        StrengthLevel.strong => c.positive,
       };
 
   @override
   Widget build(BuildContext context) {
-    final brightness = Theme.of(context).brightness;
+    final c = SuiteColors.of(context);
     final strength = StrengthEstimator.estimate(password);
-    final color = colorFor(strength.level, brightness);
+    final empty = password.isEmpty;
+    final color = colorFor(strength.level, c);
+    final filled = empty ? 0 : strength.level.index + 1;
 
-    return Row(
-      children: [
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(AppSpacing.xs),
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(end: password.isEmpty ? 0 : strength.ratio),
-              duration: const Duration(milliseconds: 250),
-              curve: Curves.easeOutCubic,
-              builder: (context, value, _) => LinearProgressIndicator(
-                value: value,
-                minHeight: 6,
-                color: color,
-                backgroundColor: AppColors.surfaceAlt(brightness),
-              ),
+    return Semantics(
+      label: empty
+          ? 'Password strength'
+          : 'Password strength: ${strength.level.label}, '
+              '${strength.bits.round()} bits',
+      excludeSemantics: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              for (var i = 0; i < StrengthLevel.values.length; i++) ...[
+                if (i > 0) const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: AnimatedContainer(
+                    duration: AppMotion.base,
+                    curve: AppMotion.standard,
+                    height: 6,
+                    decoration: ShapeDecoration(
+                      color: i < filled ? color : c.surfaceAlt,
+                      shape: const StadiumBorder(),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          if (showCaption) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                Text(
+                  empty ? 'Strength' : strength.level.label,
+                  style: AppTextStyles.labelStrong.copyWith(
+                    color: empty ? c.textTertiary : color,
+                  ),
+                ),
+                const Spacer(),
+                if (showEntropy && !empty)
+                  Text(
+                    '${strength.bits.round()} bits of entropy',
+                    style: AppTextStyles.numberSmall.copyWith(
+                      color: c.textSecondary,
+                    ),
+                  ),
+              ],
             ),
-          ),
-        ),
-        const SizedBox(width: AppSpacing.sm + 4),
-        SizedBox(
-          width: 52,
-          child: Text(
-            password.isEmpty ? '' : strength.level.label,
-            style: AppTextStyles.caption.copyWith(color: color),
-            textAlign: TextAlign.end,
-          ),
-        ),
-      ],
+          ],
+        ],
+      ),
     );
   }
 }

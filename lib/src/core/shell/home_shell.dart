@@ -11,35 +11,53 @@ class HomeShell extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: shell,
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: HomeNavigationBar(
         selectedIndex: shell.currentIndex,
-        onDestinationSelected: (index) => shell.goBranch(
+        onSelected: (index) => shell.goBranch(
           index,
           initialLocation: index == shell.currentIndex,
         ),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.lock_outline),
-            selectedIcon: Icon(Icons.lock),
-            label: 'Vault',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.casino_outlined),
-            selectedIcon: Icon(Icons.casino),
-            label: 'Generator',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.favorite_outline),
-            selectedIcon: Icon(Icons.favorite),
-            label: 'Health',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
-        ],
       ),
+    );
+  }
+}
+
+/// The four tabs: Vault, Generator, Security, Settings.
+class HomeNavigationBar extends StatelessWidget {
+  const HomeNavigationBar({
+    required this.selectedIndex,
+    required this.onSelected,
+    super.key,
+  });
+
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return NavigationBar(
+      selectedIndex: selectedIndex,
+      onDestinationSelected: onSelected,
+      destinations: const [
+        NavigationDestination(
+          icon: Icon(Icons.key_outlined),
+          selectedIcon: Icon(Icons.key_rounded),
+          label: 'Vault',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.password_rounded),
+          label: 'Generator',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.shield_outlined),
+          selectedIcon: Icon(Icons.shield_rounded),
+          label: 'Security',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.tune_rounded),
+          label: 'Settings',
+        ),
+      ],
     );
   }
 }

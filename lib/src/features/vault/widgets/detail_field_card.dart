@@ -1,71 +1,97 @@
 import 'package:core_theme/core_theme.dart';
 import 'package:flutter/material.dart';
 
-/// A labeled value card with a one-tap copy button, used on the entry
-/// detail screen.
+/// One labelled value on the entry detail screen, sized for a `RowGroup`:
+/// caption label, the value (mono for secrets), optional content under it,
+/// and trailing icon actions (reveal, open, copy).
 class DetailFieldCard extends StatelessWidget {
   const DetailFieldCard({
     required this.label,
     required this.value,
     required this.onCopy,
-    this.valueStyle,
+    this.monospace = false,
+    this.obscured = false,
     this.extraAction,
     this.multiline = false,
+    this.below,
     super.key,
   });
 
   final String label;
   final String value;
   final VoidCallback onCopy;
-  final TextStyle? valueStyle;
+  final bool monospace;
+
+  /// The value is a row of mask dots standing in for a hidden secret.
+  final bool obscured;
   final Widget? extraAction;
   final bool multiline;
 
+  /// Extra content under the value (the password strength meter).
+  final Widget? below;
+
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.sm,
-        ),
-        child: Row(
-          crossAxisAlignment:
-              multiline ? CrossAxisAlignment.start : CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: AppTextStyles.caption
-                        .copyWith(color: scheme.onSurfaceVariant),
+    final c = SuiteColors.of(context);
+    final valueStyle = monospace
+        ? AppTextStyles.code.copyWith(color: c.textPrimary, fontSize: 17)
+        : obscured
+            ? AppTextStyles.code.copyWith(
+                color: c.textPrimary,
+                fontSize: 20,
+                letterSpacing: 1.5,
+                height: 1.1,
+              )
+            : AppTextStyles.body.copyWith(color: c.textPrimary, fontSize: 17);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.mdl,
+        AppSpacing.md,
+        AppSpacing.xs,
+        AppSpacing.md,
+      ),
+      child: Row(
+        crossAxisAlignment:
+            multiline ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: AppTextStyles.caption.copyWith(
+                    color: c.textSecondary,
                   ),
-                  const SizedBox(height: 2),
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 150),
-                    child: Text(
-                      value,
-                      key: ValueKey(value),
-                      style: valueStyle ?? AppTextStyles.body,
-                      maxLines: multiline ? null : 1,
-                      overflow: multiline ? null : TextOverflow.ellipsis,
-                    ),
+                ),
+                const SizedBox(height: 4),
+                AnimatedSwitcher(
+                  duration: AppMotion.fast,
+                  child: Text(
+                    value,
+                    key: ValueKey(value),
+                    style: valueStyle,
+                    maxLines: multiline ? null : 1,
+                    overflow: multiline ? null : TextOverflow.ellipsis,
+                  ),
+                ),
+                if (below != null) ...[
+                  const SizedBox(height: AppSpacing.smd),
+                  Padding(
+                    padding: const EdgeInsets.only(right: AppSpacing.smd),
+                    child: below!,
                   ),
                 ],
-              ),
+              ],
             ),
-            if (extraAction != null) extraAction!,
-            IconButton(
-              tooltip: 'Copy',
-              icon: const Icon(Icons.copy_outlined, size: 20),
-              onPressed: onCopy,
-            ),
-          ],
-        ),
+          ),
+          if (extraAction != null) extraAction!,
+          IconButton(
+            tooltip: 'Copy ${label.toLowerCase()}',
+            icon: Icon(Icons.copy_rounded, size: 20, color: c.textSecondary),
+            onPressed: onCopy,
+          ),
+        ],
       ),
     );
   }

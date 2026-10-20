@@ -1,3 +1,4 @@
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -90,8 +91,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: AppRoutes.splash,
-        builder: (_, __) =>
-            const Scaffold(body: Center(child: CircularProgressIndicator())),
+        // Matches the native splash (neutral background, app tile) so the
+        // hand-off from the platform splash is seamless.
+        builder: (_, __) => const Scaffold(
+          body: Center(child: SuiteAppIcon(app: SuiteApp.vaultly, size: 96)),
+        ),
       ),
       GoRoute(
         path: AppRoutes.onboarding,
