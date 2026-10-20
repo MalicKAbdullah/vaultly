@@ -72,4 +72,6 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    // BiometricPrompt + CryptoObject for the hardware-bound vault key.
+    implementation("androidx.biometric:biometric:1.1.0")
 }

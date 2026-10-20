@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vaultkey/src/core/di.dart';
+import 'package:vaultkey/src/core/interfaces/biometric_key_vault.dart';
 import 'package:vaultkey/src/core/storage_keys.dart';
 import 'package:vaultkey/src/features/auth/providers/auth_providers.dart';
 import 'package:vaultkey/src/features/auth/screens/unlock_screen.dart';
@@ -92,13 +93,13 @@ void main() {
     bool supported = true,
   }) async {
     final setup = await auth.unlock(password) as UnlockSuccess;
-    final biometrics =
-        FakeBiometricAuthenticator(result: result, supported: supported);
+    final biometrics = FakeBiometricAuthenticator(supported: supported);
     await BiometricUnlockService(
       storage: storage,
       authenticator: biometrics,
+      vault: SecureStorageKeyVault(storage: storage, authenticator: biometrics),
     ).enable(setup.key);
-    return biometrics;
+    return biometrics..result = result;
   }
 
   testWidgets('biometric button is shown whenever biometrics are enabled',
