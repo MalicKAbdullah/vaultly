@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:vaultkey/src/core/clock.dart';
 import 'package:vaultkey/src/core/interfaces/autofill_bridge.dart';
+import 'package:vaultkey/src/core/interfaces/biometric_key_vault.dart';
 import 'package:vaultkey/src/core/interfaces/key_derivation.dart';
 import 'package:vaultkey/src/core/interfaces/vault_file_store.dart';
 import 'package:vaultkey/src/core/services/clipboard_guard.dart';
@@ -57,10 +58,21 @@ final biometricAuthenticatorProvider = Provider<IBiometricAuthenticator>(
   (_) => LocalAuthBiometric(),
 );
 
+/// Hardware-bound on Android; app-gated secure storage elsewhere.
+final biometricKeyVaultProvider = Provider<IBiometricKeyVault>(
+  (ref) => Platform.isAndroid
+      ? const AndroidKeystoreKeyVault()
+      : SecureStorageKeyVault(
+          storage: ref.watch(secureStorageProvider),
+          authenticator: ref.watch(biometricAuthenticatorProvider),
+        ),
+);
+
 final biometricServiceProvider = Provider<BiometricUnlockService>(
   (ref) => BiometricUnlockService(
     storage: ref.watch(secureStorageProvider),
     authenticator: ref.watch(biometricAuthenticatorProvider),
+    vault: ref.watch(biometricKeyVaultProvider),
   ),
 );
 

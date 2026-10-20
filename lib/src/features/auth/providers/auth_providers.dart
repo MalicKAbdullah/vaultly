@@ -66,10 +66,7 @@ final class SessionNotifier extends Notifier<AuthStatus> {
     final saltRaw = await salt;
     if (key == null || saltRaw == null) return false;
     _adopt(
-      UnlockSuccess(
-        key: key,
-        salt: Uint8List.fromList(base64Decode(saltRaw)),
-      ),
+      UnlockSuccess(key: key, salt: Uint8List.fromList(base64Decode(saltRaw))),
     );
     return true;
   }
@@ -82,7 +79,11 @@ final class SessionNotifier extends Notifier<AuthStatus> {
       oldPassword: oldPassword,
       newPassword: newPassword,
     );
-    if (result is UnlockSuccess) _adopt(result);
+    if (result is UnlockSuccess) {
+      // The held biometric key is the old one — drop it.
+      await ref.read(biometricServiceProvider).disable();
+      _adopt(result);
+    }
     return result;
   }
 
@@ -96,6 +97,7 @@ final class SessionNotifier extends Notifier<AuthStatus> {
 
   Future<void> eraseAll() async {
     _wipe();
+    await ref.read(biometricServiceProvider).disable();
     await _auth.eraseAll();
     // The onboarding flag was erased with everything else — reload it so
     // the fresh start begins at the intro again.

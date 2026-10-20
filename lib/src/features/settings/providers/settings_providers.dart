@@ -69,14 +69,11 @@ final class BiometricStateNotifier extends AsyncNotifier<BiometricState> {
   /// Enables biometric unlock using the current session key. Returns false
   /// when the platform prompt was cancelled.
   Future<bool> enable() async {
-    final service = ref.read(biometricServiceProvider);
-    final authenticator = ref.read(biometricAuthenticatorProvider);
-    final confirmed =
-        await authenticator.authenticate('Confirm to enable biometric unlock');
-    if (!confirmed) return false;
-    await service.enable(ref.read(sessionProvider.notifier).vaultKey);
-    ref.invalidateSelf();
-    return true;
+    final enabled = await ref
+        .read(biometricServiceProvider)
+        .enable(ref.read(sessionProvider.notifier).vaultKey);
+    if (enabled) ref.invalidateSelf();
+    return enabled;
   }
 
   Future<void> disable() async {
