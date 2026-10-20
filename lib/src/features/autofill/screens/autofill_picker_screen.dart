@@ -7,7 +7,7 @@ import 'package:vaultkey/src/features/autofill/providers/autofill_providers.dart
 import 'package:vaultkey/src/features/autofill/services/autofill_matcher.dart';
 import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
 import 'package:vaultkey/src/features/vault/providers/vault_providers.dart';
-import 'package:vaultkey/src/features/vault/widgets/entry_tile.dart';
+import 'package:vaultkey/src/core/ui/vault_ui.dart';
 
 /// Slim entry picker shown when another app asked Vaultly to fill a login
 /// form. Pre-filtered by the requesting domain/app; searching switches to
@@ -45,7 +45,7 @@ class _AutofillPickerScreenState extends ConsumerState<AutofillPickerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final c = SuiteColors.of(context);
     final request = ref.watch(autofillRequestProvider).valueOrNull ??
         const AutofillFillRequest();
     final all = ref.watch(vaultEntriesProvider).valueOrNull ?? const [];
@@ -82,115 +82,63 @@ class _AutofillPickerScreenState extends ConsumerState<AutofillPickerScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md,
-              AppSpacing.sm,
-              AppSpacing.md,
+              AppSpacing.gutter,
+              AppSpacing.xs,
+              AppSpacing.gutter,
               0,
             ),
             child: Text(
               'Choose what to fill into ${_targetLabel(request)}.',
-              style: AppTextStyles.bodyMedium
-                  .copyWith(color: scheme.onSurfaceVariant),
+              style: AppTextStyles.bodyMedium.copyWith(color: c.textSecondary),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: TextField(
+            padding: const EdgeInsets.all(AppSpacing.gutter),
+            child: AppSearchField(
+              hint: 'Search all entries',
               onChanged: (v) => setState(() => _search = v),
-              decoration: const InputDecoration(
-                hintText: 'Search all entries',
-                prefixIcon: Icon(Icons.search),
-              ),
             ),
           ),
-          if (filtered)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                0,
-                AppSpacing.md,
-                AppSpacing.xs,
-              ),
-              child: Text(
-                'Best matches — search to see everything.',
-                style: AppTextStyles.caption
-                    .copyWith(color: scheme.onSurfaceVariant),
-              ),
-            ),
           Expanded(
             child: entries.isEmpty
-                ? const VaultEmptyState(
-                    icon: Icons.search_off,
-                    message: 'No entries found.\nSearch to look through '
-                        'your whole vault.',
+                ? const Padding(
+                    padding: EdgeInsets.all(AppSpacing.gutter),
+                    child: AppEmptyState(
+                      icon: Icons.search_off_rounded,
+                      title: 'No entries found',
+                      message: 'Search to look through your whole vault.',
+                    ),
                   )
-                : ListView.builder(
+                : ListView(
                     padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.md,
+                      AppSpacing.gutter,
                       0,
-                      AppSpacing.md,
+                      AppSpacing.gutter,
                       AppSpacing.lg,
                     ),
-                    itemCount: entries.length,
-                    itemBuilder: (context, index) {
-                      final entry = entries[index];
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                        child: VaultCard(
-                          onTap: () => _pick(entry),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.md,
-                            vertical: AppSpacing.sm + 4,
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 40,
-                                height: 40,
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(
-                                  color: scheme.primaryContainer,
-                                  borderRadius: BorderRadius.circular(
-                                      AppSpacing.borderRadius),
-                                ),
-                                child: Icon(
-                                  categoryIcon(entry.category),
-                                  size: 20,
-                                  color: scheme.primary,
-                                ),
-                              ),
-                              const SizedBox(width: AppSpacing.md),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      entry.title,
-                                      style: AppTextStyles.h4,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    if (entry.username.isNotEmpty)
-                                      Text(
-                                        entry.username,
-                                        style: AppTextStyles.bodySmall.copyWith(
-                                          color: scheme.onSurfaceVariant,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                  ],
-                                ),
-                              ),
-                              Icon(
-                                Icons.keyboard_arrow_right,
-                                color: scheme.onSurfaceVariant,
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
+                    children: [
+                      SectionHeader(
+                        title: filtered ? 'Best matches' : 'All entries',
+                        subtitle: filtered
+                            ? 'Search to see everything'
+                            : '${entries.length} items',
+                      ),
+                      RowGroup(
+                        separatorIndent: 72,
+                        children: [
+                          for (final entry in entries)
+                            AppListRow(
+                              leading: EntryAvatar(entry: entry, size: 42),
+                              title: entry.title,
+                              subtitle: entry.username.isEmpty
+                                  ? null
+                                  : entry.username,
+                              showChevron: true,
+                              onTap: () => _pick(entry),
+                            ),
+                        ],
+                      ),
+                    ],
                   ),
           ),
         ],

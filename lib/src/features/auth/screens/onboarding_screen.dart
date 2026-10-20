@@ -20,19 +20,19 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   static const _pages = [
     (
-      icon: Icons.lock_outline,
+      icon: Icons.key_rounded,
       headline: 'All your passwords, one vault',
       body: 'Save every login once and find it in seconds. '
           'One master password unlocks them all.',
     ),
     (
-      icon: Icons.phonelink_lock_outlined,
+      icon: Icons.phonelink_lock_rounded,
       headline: 'Yours alone',
       body: 'Everything stays on this device, encrypted. '
           'No accounts, no servers, no tracking.',
     ),
     (
-      icon: Icons.cloud_upload_outlined,
+      icon: Icons.cloud_upload_rounded,
       headline: 'Back up anywhere',
       body: 'Keep a protected backup wherever you like — '
           'even straight to your Drive folder.',
@@ -55,27 +55,37 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       _finish();
       return;
     }
-    _controller.nextPage(
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeOut,
-    );
+    _controller.nextPage(duration: AppMotion.base, curve: AppMotion.standard);
   }
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final c = SuiteColors.of(context);
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
-            Align(
-              alignment: Alignment.centerRight,
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.sm),
-                child: TextButton(
-                  onPressed: _finish,
-                  child: const Text('Skip'),
-                ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.gutter,
+                AppSpacing.sm,
+                AppSpacing.sm,
+                0,
+              ),
+              child: Row(
+                children: [
+                  const SuiteAppIcon(app: SuiteApp.vaultly, size: 36),
+                  const SizedBox(width: AppSpacing.smd),
+                  Text(
+                    'Vaultly',
+                    style: AppTextStyles.h4.copyWith(color: c.textPrimary),
+                  ),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: _finish,
+                    child: const Text('Skip'),
+                  ),
+                ],
               ),
             ),
             Expanded(
@@ -83,43 +93,48 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 controller: _controller,
                 onPageChanged: (page) => setState(() => _page = page),
                 children: [
-                  for (final page in _pages)
+                  for (var i = 0; i < _pages.length; i++)
                     _OnboardingPage(
-                      icon: page.icon,
-                      headline: page.headline,
-                      body: page.body,
+                      step: i + 1,
+                      of: _pages.length,
+                      icon: _pages[i].icon,
+                      headline: _pages[i].headline,
+                      body: _pages[i].body,
                     ),
                 ],
               ),
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (var i = 0; i < _pages.length; i++)
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    width: i == _page ? 20 : 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: i == _page
-                          ? scheme.primary
-                          : scheme.primary.withValues(alpha: 0.25),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-              ],
-            ),
             Padding(
-              padding: const EdgeInsets.all(AppSpacing.lg),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.gutter,
+                0,
+                AppSpacing.gutter,
+                AppSpacing.lg,
+              ),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 420),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: VaultButton(
-                    label: _isLast ? 'Get started' : 'Next',
-                    onPressed: _next,
-                  ),
+                child: Row(
+                  children: [
+                    for (var i = 0; i < _pages.length; i++)
+                      AnimatedContainer(
+                        duration: AppMotion.base,
+                        curve: AppMotion.standard,
+                        margin: const EdgeInsets.only(right: 6),
+                        width: i == _page ? 24 : 8,
+                        height: 8,
+                        decoration: ShapeDecoration(
+                          color: i == _page ? c.accent : c.border,
+                          shape: const StadiumBorder(),
+                        ),
+                      ),
+                    const Spacer(),
+                    VaultButton(
+                      label: _isLast ? 'Get started' : 'Next',
+                      icon: _isLast ? null : Icons.arrow_forward_rounded,
+                      isFullWidth: false,
+                      onPressed: _next,
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -132,44 +147,68 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
 class _OnboardingPage extends StatelessWidget {
   const _OnboardingPage({
+    required this.step,
+    required this.of,
     required this.icon,
     required this.headline,
     required this.body,
   });
 
+  final int step;
+  final int of;
   final IconData icon;
   final String headline;
   final String body;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+    final c = SuiteColors.of(context);
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.gutter,
+        AppSpacing.xxl,
+        AppSpacing.gutter,
+        AppSpacing.lg,
+      ),
+      child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 96,
-                height: 96,
-                alignment: Alignment.center,
+                width: 88,
+                height: 88,
                 decoration: BoxDecoration(
-                  color: scheme.primaryContainer,
-                  shape: BoxShape.circle,
+                  color: c.accentContainer,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
                 ),
-                child: Icon(icon, size: 44, color: scheme.primary),
+                child: Icon(icon, size: 40, color: c.accent),
               ),
-              const SizedBox(height: AppSpacing.xl),
-              Text(headline,
-                  style: AppTextStyles.h1, textAlign: TextAlign.center),
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: AppSpacing.xxl),
+              Text(
+                'Step $step of $of',
+                style: AppTextStyles.label.copyWith(color: c.textSecondary),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Semantics(
+                header: true,
+                child: Text(
+                  headline,
+                  style: AppTextStyles.display.copyWith(
+                    color: c.textPrimary,
+                    height: 1.1,
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.mdl),
               Text(
                 body,
-                style: AppTextStyles.bodyMedium
-                    .copyWith(color: scheme.onSurfaceVariant),
-                textAlign: TextAlign.center,
+                style: AppTextStyles.body.copyWith(
+                  color: c.textSecondary,
+                  fontSize: 18,
+                  height: 1.45,
+                ),
               ),
             ],
           ),

@@ -55,60 +55,69 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final c = SuiteColors.of(context);
     return Scaffold(
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.lg),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.gutter,
+              AppSpacing.xl,
+              AppSpacing.gutter,
+              AppSpacing.lg,
+            ),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Container(
-                    width: 72,
-                    height: 72,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: scheme.primaryContainer,
-                      borderRadius:
-                          BorderRadius.circular(AppSpacing.borderRadiusLg),
-                    ),
-                    child: Icon(Icons.shield_outlined,
-                        size: 36, color: scheme.primary),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: SuiteAppIcon(app: SuiteApp.vaultly, size: 56),
                   ),
-                  const SizedBox(height: AppSpacing.lg),
-                  const Text('Welcome to Vaultly',
-                      style: AppTextStyles.h1, textAlign: TextAlign.center),
+                  const SizedBox(height: AppSpacing.xl),
+                  Semantics(
+                    header: true,
+                    child: Text(
+                      'Welcome to Vaultly',
+                      style: AppTextStyles.h1.copyWith(color: c.textPrimary),
+                    ),
+                  ),
                   const SizedBox(height: AppSpacing.sm),
                   Text(
                     'Create a master password. It protects everything and '
                     'is never stored anywhere — make it one you will '
                     'remember.',
-                    style: AppTextStyles.bodyMedium
-                        .copyWith(color: scheme.onSurfaceVariant),
-                    textAlign: TextAlign.center,
+                    style: AppTextStyles.body.copyWith(color: c.textSecondary),
                   ),
                   const SizedBox(height: AppSpacing.xl),
-                  VaultTextField(
+                  AppTextField(
                     label: 'Master password',
                     controller: _passwordController,
                     obscureText: _obscure,
                     autofocus: true,
                     hint: 'At least 8 characters',
+                    textInputAction: TextInputAction.next,
                     onChanged: (_) => setState(() => _error = null),
                     suffixIcon: IconButton(
+                      tooltip: _obscure ? 'Show' : 'Hide',
                       icon: Icon(
-                        _obscure ? Icons.visibility : Icons.visibility_off,
+                        _obscure
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                        size: 20,
                       ),
                       onPressed: () => setState(() => _obscure = !_obscure),
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.sm),
-                  StrengthMeter(password: _passwordController.text),
+                  const SizedBox(height: AppSpacing.smd),
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+                    child: StrengthMeter(password: _passwordController.text),
+                  ),
                   const SizedBox(height: AppSpacing.md),
-                  VaultTextField(
+                  AppTextField(
                     label: 'Confirm password',
                     controller: _confirmController,
                     obscureText: true,
@@ -123,12 +132,21 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                     onPressed: _isValid && !_busy ? _create : null,
                   ),
                   const SizedBox(height: AppSpacing.lg),
-                  Text(
-                    'Your passwords are stored only on this device, '
-                    'protected by encryption.',
-                    style: AppTextStyles.caption
-                        .copyWith(color: scheme.onSurfaceVariant),
-                    textAlign: TextAlign.center,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.lock_outline_rounded,
+                          size: 14, color: c.textTertiary),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          'Stored only on this device, encrypted.',
+                          style: AppTextStyles.caption.copyWith(
+                            color: c.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

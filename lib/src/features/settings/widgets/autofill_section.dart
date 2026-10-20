@@ -1,4 +1,5 @@
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vaultkey/src/core/di.dart';
@@ -52,54 +53,59 @@ class _AutofillSectionState extends ConsumerState<AutofillSection>
     final status = ref.watch(autofillStatusProvider).valueOrNull;
     if (status == null || !status.supported) return const SizedBox.shrink();
 
-    final scheme = Theme.of(context).colorScheme;
+    final c = SuiteColors.of(context);
     final enabled = status.enabled;
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Divider(height: AppSpacing.lg),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.md,
-            AppSpacing.md,
-            AppSpacing.md,
-            AppSpacing.xs,
-          ),
-          child: Text(
-            'AUTOFILL',
-            style:
-                AppTextStyles.overline.copyWith(color: scheme.onSurfaceVariant),
-          ),
-        ),
-        ListTile(
-          leading: const Icon(Icons.edit_note_outlined),
-          title: const Text('Fill passwords in other apps'),
-          subtitle: Text(
-            enabled
-                ? 'On — login forms offer "Unlock Vaultly to fill".'
-                : 'Off — turn it on to fill logins in apps and websites '
-                    'without copying and pasting.',
-          ),
-          trailing:
-              enabled ? Icon(Icons.check_circle, color: scheme.primary) : null,
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.md,
-            0,
-            AppSpacing.md,
-            AppSpacing.sm,
-          ),
-          child: OutlinedButton.icon(
-            onPressed: _openSettings,
-            icon: const Icon(Icons.settings_outlined, size: 18),
-            label: Text(
-              enabled
-                  ? 'Manage in system settings'
-                  : 'Turn on in system settings',
+        const SizedBox(height: AppSpacing.lg),
+        const SectionHeader(title: 'Autofill'),
+        RowGroup(
+          separatorIndent: AppSpacing.md,
+          children: [
+            AppListRow(
+              leading: IconBadge(
+                icon: Icons.edit_note_rounded,
+                color: enabled ? c.positive : null,
+                size: 36,
+              ),
+              title: 'Fill passwords in other apps',
+              subtitle: enabled ? 'On' : 'Off',
+              trailing: enabled
+                  ? Icon(Icons.check_circle_rounded, color: c.positive)
+                  : null,
             ),
-          ),
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    enabled
+                        ? 'Login forms offer "Unlock Vaultly to fill".'
+                        : 'Turn it on to fill logins in apps and websites '
+                            'without copying and pasting.',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: c.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.smd),
+                  VaultButton(
+                    compact: true,
+                    variant: enabled
+                        ? VaultButtonVariant.secondary
+                        : VaultButtonVariant.primary,
+                    icon: Icons.open_in_new_rounded,
+                    label: enabled
+                        ? 'Manage in system settings'
+                        : 'Turn on in system settings',
+                    onPressed: _openSettings,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ],
     );

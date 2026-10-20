@@ -1,11 +1,13 @@
 import 'package:core_backup/core_backup.dart';
 import 'package:core_theme/core_theme.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vaultkey/src/core/app_info.dart';
 import 'package:vaultkey/src/core/di.dart';
 import 'package:vaultkey/src/core/router/app_router.dart';
+import 'package:vaultkey/src/core/ui/vault_ui.dart';
 import 'package:vaultkey/src/features/auth/providers/auth_providers.dart';
 import 'package:vaultkey/src/features/settings/providers/settings_providers.dart';
 import 'package:vaultkey/src/features/settings/widgets/autofill_section.dart';
@@ -82,131 +84,191 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
+    final c = SuiteColors.of(context);
     final biometrics = ref.watch(biometricStateProvider).valueOrNull;
     final autoLock = ref.watch(autoLockProvider);
+    final supported = biometrics?.supported ?? false;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
-      body: ListView(
-        padding: const EdgeInsets.only(bottom: AppSpacing.xl),
-        children: [
-          const _SectionHeader('Security'),
-          SwitchListTile(
-            secondary: const Icon(Icons.fingerprint),
-            title: const Text('Biometric unlock'),
-            subtitle: Text(
-              (biometrics?.supported ?? false)
-                  ? 'Use fingerprint or face to unlock'
-                  : 'Not available on this device',
-            ),
-            value: biometrics?.enabled ?? false,
-            onChanged: (biometrics?.supported ?? false)
-                ? (v) => _toggleBiometrics(context, ref, v)
-                : null,
-          ),
-          ListTile(
-            leading: const Icon(Icons.timer_outlined),
-            title: const Text('Auto-lock'),
-            subtitle: Text('After ${_autoLockLabel(autoLock)} of inactivity'),
-            trailing: PopupMenuButton<Duration>(
-              icon: const Icon(Icons.expand_more),
-              initialValue: autoLock,
-              onSelected: (d) => ref.read(autoLockProvider.notifier).set(d),
-              itemBuilder: (context) => [
-                for (final choice in autoLockChoices)
-                  PopupMenuItem(
-                    value: choice,
-                    child: Text(_autoLockLabel(choice)),
+      body: SafeArea(
+        bottom: false,
+        child: ListView(
+          padding: const EdgeInsets.only(bottom: AppSpacing.xxl),
+          children: [
+            const TabHeader(eyebrow: 'Vaultly', title: 'Settings'),
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SectionHeader(title: 'Security'),
+                  RowGroup(
+                    separatorIndent: settingsRowIndent,
+                    children: [
+                      SettingsTile(
+                        icon: Icons.fingerprint_rounded,
+                        title: 'Biometric unlock',
+                        subtitle: supported
+                            ? 'Use fingerprint or face to unlock'
+                            : 'Not available on this device',
+                        trailing: Switch(
+                          value: biometrics?.enabled ?? false,
+                          onChanged: supported
+                              ? (v) => _toggleBiometrics(context, ref, v)
+                              : null,
+                        ),
+                      ),
+                      PopupMenuButton<Duration>(
+                        tooltip: 'Auto-lock',
+                        initialValue: autoLock,
+                        onSelected: (d) =>
+                            ref.read(autoLockProvider.notifier).set(d),
+                        itemBuilder: (context) => [
+                          for (final choice in autoLockChoices)
+                            PopupMenuItem(
+                              value: choice,
+                              child: Text(_autoLockLabel(choice)),
+                            ),
+                        ],
+                        child: SettingsTile(
+                          icon: Icons.timer_outlined,
+                          title: 'Auto-lock',
+                          subtitle:
+                              'After ${_autoLockLabel(autoLock)} of inactivity',
+                          trailing: Icon(
+                            Icons.unfold_more_rounded,
+                            color: c.textTertiary,
+                          ),
+                        ),
+                      ),
+                      SettingsTile(
+                        icon: Icons.password_rounded,
+                        title: 'Change master password',
+                        onTap: () =>
+                            context.push(AppRoutes.changeMasterPassword),
+                      ),
+                    ],
                   ),
-              ],
+                  // Hides itself entirely on devices without autofill (iOS).
+                  const AutofillSection(),
+                  const SizedBox(height: AppSpacing.lg),
+                  const SectionHeader(
+                    title: 'Auto-backup',
+                    subtitle: 'An encrypted copy, saved on a schedule',
+                  ),
+                  _Panel(
+                    child: AutoBackupSection(
+                      service: ref.watch(autoBackupServiceProvider),
+                      producer: ref.watch(vaultBackupProducerProvider),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  const SectionHeader(title: 'Your data'),
+                  RowGroup(
+                    separatorIndent: settingsRowIndent,
+                    children: [
+                      SettingsTile(
+                        icon: Icons.upload_rounded,
+                        title: 'Export',
+                        subtitle: 'Encrypted backup or CSV',
+                        onTap: () => context.push(AppRoutes.export),
+                      ),
+                      SettingsTile(
+                        icon: Icons.download_rounded,
+                        title: 'Import',
+                        subtitle: 'Restore a backup or bring passwords over',
+                        onTap: () => context.push(AppRoutes.import),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  const SectionHeader(title: 'Updates'),
+                  const _UpdateSection(),
+                  const SizedBox(height: AppSpacing.lg),
+                  const SectionHeader(title: 'Danger zone'),
+                  RowGroup(
+                    children: [
+                      SettingsTile(
+                        icon: Icons.delete_forever_outlined,
+                        iconColor: c.negative,
+                        title: 'Erase all data',
+                        subtitle: 'Deletes every entry on this device',
+                        onTap: () => _eraseAll(context, ref),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xxl),
+                  const _About(),
+                ],
+              ),
             ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.password_outlined),
-            title: const Text('Change master password'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push(AppRoutes.changeMasterPassword),
-          ),
-          // Hides itself entirely on devices without autofill (iOS).
-          const AutofillSection(),
-          const Divider(height: AppSpacing.lg),
-          const _SectionHeader('Auto-backup'),
-          AutoBackupSection(
-            service: ref.watch(autoBackupServiceProvider),
-            producer: ref.watch(vaultBackupProducerProvider),
-          ),
-          const Divider(height: AppSpacing.lg),
-          const _SectionHeader('Your data'),
-          ListTile(
-            leading: const Icon(Icons.upload_outlined),
-            title: const Text('Export'),
-            subtitle: const Text('Encrypted backup or CSV'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push(AppRoutes.export),
-          ),
-          ListTile(
-            leading: const Icon(Icons.download_outlined),
-            title: const Text('Import'),
-            subtitle: const Text('Restore a backup or bring passwords over'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push(AppRoutes.import),
-          ),
-          const Divider(height: AppSpacing.lg),
-          const _SectionHeader('Updates'),
-          const _UpdateSection(),
-          const Divider(height: AppSpacing.lg),
-          const _SectionHeader('About'),
-          const ListTile(
-            leading: Icon(Icons.shield_outlined),
-            title: Text(AppInfo.name),
-            subtitle: Text('Version ${AppInfo.version}'),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-            child: Text(
-              'Your passwords are stored only on this device, protected '
-              'by encryption. The only network use is the optional update '
-              'check.',
-              style: AppTextStyles.bodySmall
-                  .copyWith(color: scheme.onSurfaceVariant),
-            ),
-          ),
-          const Divider(height: AppSpacing.lg),
-          ListTile(
-            leading: Icon(Icons.delete_forever_outlined, color: scheme.error),
-            title: Text(
-              'Erase all data',
-              style: TextStyle(color: scheme.error),
-            ),
-            onTap: () => _eraseAll(context, ref),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader(this.title);
+/// Separator inset for a `SettingsTile` row (36 px badge).
+const double settingsRowIndent = 66;
 
-  final String title;
+/// A card surface for a shared section that renders its own rows.
+class _Panel extends StatelessWidget {
+  const _Panel({required this.child});
+
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        AppSpacing.md,
-        AppSpacing.md,
-        AppSpacing.xs,
+    final c = SuiteColors.of(context);
+    return Material(
+      color: c.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        side: BorderSide(color: c.hairline),
       ),
-      child: Text(
-        title.toUpperCase(),
-        style: AppTextStyles.overline.copyWith(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+        child: child,
+      ),
+    );
+  }
+}
+
+class _About extends StatelessWidget {
+  const _About();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = SuiteColors.of(context);
+    return Column(
+      children: [
+        const SuiteAppIcon(app: SuiteApp.vaultly, size: 56),
+        const SizedBox(height: AppSpacing.smd),
+        Text(
+          AppInfo.name,
+          style: AppTextStyles.h3.copyWith(color: c.textPrimary),
         ),
-      ),
+        Text(
+          'Version ${AppInfo.version}',
+          style: AppTextStyles.bodySmall.copyWith(color: c.textSecondary),
+        ),
+        const SizedBox(height: AppSpacing.smd),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 320),
+          child: Text(
+            'Your passwords are stored only on this device, protected '
+            'by encryption. The only network use is the optional update '
+            'check.',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bodySmall.copyWith(color: c.textSecondary),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        const SuiteEndorsement(),
+      ],
     );
   }
 }
@@ -249,27 +311,28 @@ class _UpdateSectionState extends ConsumerState<_UpdateSection> {
   @override
   Widget build(BuildContext context) {
     final autoCheck = ref.watch(updateAutoCheckProvider).valueOrNull ?? true;
-    return Column(
+    return RowGroup(
+      separatorIndent: settingsRowIndent,
       children: [
-        SwitchListTile(
-          secondary: const Icon(Icons.system_update_alt),
-          title: const Text('Check for updates on open'),
-          subtitle: const Text(
-            'Looks for a new release on GitHub. Nothing is uploaded.',
+        SettingsTile(
+          icon: Icons.system_update_alt_rounded,
+          title: 'Check for updates on open',
+          subtitle: 'Looks on GitHub. Nothing is uploaded.',
+          trailing: Switch(
+            value: autoCheck,
+            onChanged: (v) async {
+              await ref.read(secureStorageProvider).write(
+                    key: updateAutoCheckKey,
+                    value: v ? 'true' : 'false',
+                  );
+              ref.invalidate(updateAutoCheckProvider);
+              ref.invalidate(updateCheckProvider);
+            },
           ),
-          value: autoCheck,
-          onChanged: (v) async {
-            await ref.read(secureStorageProvider).write(
-                  key: updateAutoCheckKey,
-                  value: v ? 'true' : 'false',
-                );
-            ref.invalidate(updateAutoCheckProvider);
-            ref.invalidate(updateCheckProvider);
-          },
         ),
-        ListTile(
-          leading: const Icon(Icons.refresh),
-          title: const Text('Check now'),
+        SettingsTile(
+          icon: Icons.refresh_rounded,
+          title: 'Check now',
           trailing: _checking
               ? const SizedBox(
                   width: 18,
