@@ -7,6 +7,7 @@ import 'package:vaultkey/src/features/auth/providers/auth_providers.dart';
 import 'package:vaultkey/src/features/autofill/providers/autofill_providers.dart';
 import 'package:vaultkey/src/features/autofill/screens/autofill_picker_screen.dart';
 import 'package:vaultkey/src/features/auth/screens/onboarding_screen.dart';
+import 'package:vaultkey/src/features/auth/screens/recovery_key_screen.dart';
 import 'package:vaultkey/src/features/auth/screens/setup_screen.dart';
 import 'package:vaultkey/src/features/auth/screens/unlock_screen.dart';
 import 'package:vaultkey/src/features/backup/screens/export_screen.dart';
@@ -33,6 +34,7 @@ abstract final class AppRoutes {
   static const String export = '/export';
   static const String import = '/import';
   static const String autofillPicker = '/autofill-picker';
+  static const String recoveryKey = '/recovery-key';
 
   static String entryDetail(String id) => '/entry/$id';
 
@@ -50,7 +52,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     // another app's fill request.
     ..listen(autofillRequestProvider, (_, __) => refresh.value++)
     // Re-route once the first-run flag loads or gets written.
-    ..listen(onboardingSeenProvider, (_, __) => refresh.value++);
+    ..listen(onboardingSeenProvider, (_, __) => refresh.value++)
+    ..listen(recoveryPromptProvider, (_, __) => refresh.value++);
 
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
@@ -80,7 +83,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 ? null
                 : AppRoutes.autofillPicker;
           }
-          final gate = location == AppRoutes.splash ||
+          // A pending recovery-key offer or display covers everything else.
+          final recovery = ref.read(recoveryPromptProvider);
+          if (recovery != RecoveryPrompt.none) {
+            return location == AppRoutes.recoveryKey
+                ? null
+                : AppRoutes.recoveryKey;
+          }
+          final gate = location == AppRoutes.recoveryKey ||
+              location == AppRoutes.splash ||
               location == AppRoutes.onboarding ||
               location == AppRoutes.setup ||
               location == AppRoutes.unlock ||
@@ -113,6 +124,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.autofillPicker,
         parentNavigatorKey: _rootNavigatorKey,
         builder: (_, __) => const AutofillPickerScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.recoveryKey,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (_, __) => const RecoveryKeyScreen(),
       ),
       GoRoute(
         path: AppRoutes.newEntry,

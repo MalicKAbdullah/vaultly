@@ -15,6 +15,8 @@ abstract final class VaultKeyKeys {
   static const String backupLastAt = 'vaultkey_backup_last_at';
   static const String backupLastError = 'vaultkey_backup_last_error';
   static const String onboardingDone = 'vaultkey_onboarding_done';
+  static const String recoveryWrap = 'vaultkey_recovery_wrap';
+  static const String recoveryOffered = 'vaultkey_recovery_offered';
 
   static const List<String> all = [
     salt,
@@ -31,5 +33,7 @@ abstract final class VaultKeyKeys {
     backupLastAt,
     backupLastError,
     onboardingDone,
+    recoveryWrap,
+    recoveryOffered,
   ];
 }

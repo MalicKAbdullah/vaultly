@@ -2,12 +2,13 @@ import 'package:core_theme/core_theme.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:vaultkey/src/features/auth/providers/auth_providers.dart';
 import 'package:vaultkey/src/features/auth/services/master_auth_service.dart';
 import 'package:vaultkey/src/features/generator/widgets/strength_meter.dart';
 
 /// Changes the master password and re-encrypts the vault under the new key.
+/// In a session opened with biometrics, a fresh biometric prompt replaces
+/// the current password. The router then shows the new recovery key.
 class ChangeMasterPasswordScreen extends ConsumerStatefulWidget {
   const ChangeMasterPasswordScreen({super.key});
 
@@ -48,13 +49,16 @@ class _ChangeMasterPasswordScreenState
       _currentError = null;
       _newError = null;
     });
-    final result =
-        await ref.read(sessionProvider.notifier).changeMasterPassword(
-              oldPassword: _currentController.text,
-              newPassword: _newController.text,
-            );
+    final session = ref.read(sessionProvider.notifier);
+    final result = await session.changeMasterPassword(
+      oldPassword:
+          session.unlockedWithBiometrics ? null : _currentController.text,
+      newPassword: _newController.text,
+    );
     if (!mounted) return;
     switch (result) {
+      case null:
+        setState(() => _newError = 'Biometric confirmation did not pass.');
       case UnlockSuccess():
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -64,7 +68,6 @@ class _ChangeMasterPasswordScreenState
             ),
           ),
         );
-        context.pop();
       case UnlockWrongPassword():
         setState(() => _currentError = 'Your current password is not right.');
       case UnlockCoolingDown(:final remaining):
@@ -76,8 +79,11 @@ class _ChangeMasterPasswordScreenState
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final c = SuiteColors.of(context);
+    final askCurrent =
+        !ref.read(sessionProvider.notifier).unlockedWithBiometrics;
     return Scaffold(
+      backgroundColor: c.background,
       appBar: AppBar(title: const Text('Change master password')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.md),
@@ -86,21 +92,29 @@ class _ChangeMasterPasswordScreenState
           children: [
             Text(
               'Your vault is re-encrypted with the new password. The old '
-              'password stops working immediately.',
-              style: AppTextStyles.bodySmall
-                  .copyWith(color: scheme.onSurfaceVariant),
+              'password stops working immediately, and so does your '
+              'recovery key — a new one is shown next.',
+              style: AppTextStyles.bodySmall.copyWith(color: c.textSecondary),
             ),
             const SizedBox(height: AppSpacing.lg),
-            VaultTextField(
-              label: 'Current password',
-              controller: _currentController,
-              obscureText: true,
-              autofocus: true,
-              errorText: _currentError,
-              onChanged: (_) => setState(() => _currentError = null),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            VaultTextField(
+            if (askCurrent) ...[
+              AppTextField(
+                label: 'Current password',
+                controller: _currentController,
+                obscureText: true,
+                autofocus: true,
+                errorText: _currentError,
+                onChanged: (_) => setState(() => _currentError = null),
+              ),
+              const SizedBox(height: AppSpacing.md),
+            ] else ...[
+              Text(
+                'You will confirm with biometrics when you save.',
+                style: AppTextStyles.bodySmall.copyWith(color: c.textSecondary),
+              ),
+              const SizedBox(height: AppSpacing.md),
+            ],
+            AppTextField(
               label: 'New password',
               controller: _newController,
               obscureText: true,
@@ -110,7 +124,7 @@ class _ChangeMasterPasswordScreenState
             const SizedBox(height: AppSpacing.sm),
             StrengthMeter(password: _newController.text),
             const SizedBox(height: AppSpacing.md),
-            VaultTextField(
+            AppTextField(
               label: 'Confirm new password',
               controller: _confirmController,
               obscureText: true,
