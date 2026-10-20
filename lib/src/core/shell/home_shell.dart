@@ -19,23 +19,23 @@ class HomeShell extends StatelessWidget {
         ),
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.lock_outline),
-            selectedIcon: Icon(Icons.lock),
+            icon: Icon(Icons.key_outlined),
+            selectedIcon: Icon(Icons.key_rounded),
             label: 'Vault',
           ),
           NavigationDestination(
-            icon: Icon(Icons.casino_outlined),
-            selectedIcon: Icon(Icons.casino),
+            icon: Icon(Icons.password_rounded),
+            selectedIcon: Icon(Icons.password_rounded),
             label: 'Generator',
           ),
           NavigationDestination(
-            icon: Icon(Icons.favorite_outline),
-            selectedIcon: Icon(Icons.favorite),
-            label: 'Health',
+            icon: Icon(Icons.shield_outlined),
+            selectedIcon: Icon(Icons.shield_rounded),
+            label: 'Security',
           ),
           NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
+            icon: Icon(Icons.tune_rounded),
+            selectedIcon: Icon(Icons.tune_rounded),
             label: 'Settings',
           ),
         ],

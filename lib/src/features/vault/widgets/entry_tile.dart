@@ -1,17 +1,10 @@
 import 'package:core_theme/core_theme.dart';
-import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
+import 'package:vaultkey/src/core/ui/vault_ui.dart';
 import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
 
-/// Icon for each entry category.
-IconData categoryIcon(EntryCategory category) => switch (category) {
-      EntryCategory.login => Icons.language,
-      EntryCategory.card => Icons.credit_card,
-      EntryCategory.identity => Icons.badge_outlined,
-      EntryCategory.note => Icons.sticky_note_2_outlined,
-    };
-
-/// One row in the vault list.
+/// One vault item inside a `RowGroup`: avatar, title with its markers,
+/// the username (or website), a one-tap password copy and an overflow menu.
 class EntryTile extends StatelessWidget {
   const EntryTile({
     required this.entry,
@@ -32,109 +25,136 @@ class EntryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return VaultCard(
+    final c = SuiteColors.of(context);
+    final subtitle = entry.username.isNotEmpty
+        ? entry.username
+        : entry.url.isNotEmpty
+            ? entry.url
+            : entry.category.label;
+    return InkWell(
       onTap: onTap,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm + 4,
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: scheme.primaryContainer,
-              borderRadius: BorderRadius.circular(AppSpacing.borderRadius),
-            ),
-            child: Icon(
-              categoryIcon(entry.category),
-              size: 22,
-              color: scheme.primary,
-            ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 76),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            AppSpacing.smd,
+            AppSpacing.xs,
+            AppSpacing.smd,
           ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          child: Row(
+            children: [
+              EntryAvatar(entry: entry),
+              const SizedBox(width: AppSpacing.smd + 2),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Flexible(
-                      child: Text(
-                        entry.title,
-                        style: AppTextStyles.h4,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (entry.favorite) ...[
-                      const SizedBox(width: AppSpacing.xs),
-                      Icon(Icons.star_rounded,
-                          size: 16,
-                          color:
-                              AppColors.warning(Theme.of(context).brightness)),
-                    ],
-                    if (entry.totp != null) ...[
-                      const SizedBox(width: AppSpacing.xs),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 5,
-                          vertical: 1,
-                        ),
-                        decoration: BoxDecoration(
-                          color: scheme.primaryContainer,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          '2FA',
-                          style: AppTextStyles.caption.copyWith(
-                            fontSize: 10,
-                            color: scheme.primary,
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            entry.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.h4.copyWith(
+                              color: c.textPrimary,
+                              fontSize: 17,
+                            ),
                           ),
                         ),
+                        if (entry.favorite) ...[
+                          const SizedBox(width: 6),
+                          Icon(
+                            Icons.star_rounded,
+                            size: 16,
+                            color: c.accent,
+                            semanticLabel: 'Favorite',
+                          ),
+                        ],
+                        if (entry.totp != null) ...[
+                          const SizedBox(width: 6),
+                          const _Tag('2FA'),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: c.textSecondary,
                       ),
-                    ],
+                    ),
                   ],
                 ),
-                if (entry.username.isNotEmpty)
-                  Text(
-                    entry.username,
-                    style: AppTextStyles.bodySmall
-                        .copyWith(color: scheme.onSurfaceVariant),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-              ],
-            ),
-          ),
-          PopupMenuButton<String>(
-            icon: Icon(Icons.more_vert, color: scheme.onSurfaceVariant),
-            onSelected: (action) => switch (action) {
-              'copy-password' => onCopyPassword(),
-              'copy-username' => onCopyUsername(),
-              'edit' => onEdit(),
-              'delete' => onDelete(),
-              _ => null,
-            },
-            itemBuilder: (context) => [
+              ),
               if (entry.password.isNotEmpty)
-                const PopupMenuItem(
-                  value: 'copy-password',
-                  child: Text('Copy password'),
+                IconButton(
+                  tooltip: 'Copy password',
+                  onPressed: onCopyPassword,
+                  icon: Icon(
+                    Icons.copy_rounded,
+                    size: 20,
+                    color: c.textSecondary,
+                  ),
                 ),
-              if (entry.username.isNotEmpty)
-                const PopupMenuItem(
-                  value: 'copy-username',
-                  child: Text('Copy username'),
-                ),
-              const PopupMenuItem(value: 'edit', child: Text('Edit')),
-              const PopupMenuItem(value: 'delete', child: Text('Delete')),
+              PopupMenuButton<String>(
+                tooltip: 'More',
+                icon: Icon(Icons.more_vert, color: c.textTertiary),
+                onSelected: (action) => switch (action) {
+                  'copy-password' => onCopyPassword(),
+                  'copy-username' => onCopyUsername(),
+                  'edit' => onEdit(),
+                  'delete' => onDelete(),
+                  _ => null,
+                },
+                itemBuilder: (context) => [
+                  if (entry.password.isNotEmpty)
+                    const PopupMenuItem(
+                      value: 'copy-password',
+                      child: Text('Copy password'),
+                    ),
+                  if (entry.username.isNotEmpty)
+                    const PopupMenuItem(
+                      value: 'copy-username',
+                      child: Text('Copy username'),
+                    ),
+                  const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                  const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                ],
+              ),
             ],
           ),
-        ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Tag extends StatelessWidget {
+  const _Tag(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = SuiteColors.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      decoration: ShapeDecoration(
+        color: c.accentContainer,
+        shape: const StadiumBorder(),
+      ),
+      child: Text(
+        label,
+        style: AppTextStyles.overline.copyWith(
+          color: c.accent,
+          letterSpacing: 0.4,
+          height: 1.4,
+        ),
       ),
     );
   }

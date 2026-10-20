@@ -81,10 +81,11 @@ class _EntryEditorScreenState extends ConsumerState<EntryEditorScreen> {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (sheetContext) => Padding(
+      showDragHandle: true,
+      builder: (sheetContext) => SingleChildScrollView(
         padding: EdgeInsets.only(
-          left: AppSpacing.md,
-          right: AppSpacing.md,
+          left: AppSpacing.gutter,
+          right: AppSpacing.gutter,
           bottom: MediaQuery.of(sheetContext).viewInsets.bottom + AppSpacing.lg,
         ),
         child: GeneratorPanel(
@@ -146,50 +147,67 @@ class _EntryEditorScreenState extends ConsumerState<EntryEditorScreen> {
   @override
   Widget build(BuildContext context) {
     _maybeLoadExisting();
+    final c = SuiteColors.of(context);
+    const gap = SizedBox(height: AppSpacing.smd);
     return Scaffold(
       appBar: AppBar(
         title: Text(_isEditing ? 'Edit entry' : 'New entry'),
       ),
+      bottomNavigationBar: BottomActionBar(
+        primary: VaultButton(
+          label: _isEditing ? 'Save changes' : 'Add to vault',
+          isLoading: _busy,
+          onPressed: _busy ? null : _save,
+        ),
+      ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.gutter,
+          AppSpacing.sm,
+          AppSpacing.gutter,
+          AppSpacing.xl,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SegmentedButton<EntryCategory>(
+            AppSegmentedControl<EntryCategory>(
+              height: 44,
               segments: [
                 for (final category in EntryCategory.values)
-                  ButtonSegment(
-                    value: category,
-                    label: Text(category.label),
-                  ),
+                  AppSegment(value: category, label: category.label),
               ],
-              selected: {_category},
-              onSelectionChanged: (selection) =>
-                  setState(() => _category = selection.first),
+              selected: _category,
+              onChanged: (category) => setState(() => _category = category),
             ),
             const SizedBox(height: AppSpacing.lg),
-            VaultTextField(
+            AppTextField(
               label: 'Title',
               controller: _titleController,
               hint: 'e.g. Personal email',
               errorText: _titleError,
+              textInputAction: TextInputAction.next,
               onChanged: (_) {
                 if (_titleError != null) {
                   setState(() => _titleError = null);
                 }
               },
             ),
-            const SizedBox(height: AppSpacing.md),
-            VaultTextField(
+            const SizedBox(height: AppSpacing.lg),
+            const SectionHeader(title: 'Sign-in'),
+            AppTextField(
               label: 'Username / email',
               controller: _usernameController,
               keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.next,
+              prefixIcon: Icons.person_outline_rounded,
             ),
-            const SizedBox(height: AppSpacing.md),
-            VaultTextField(
+            gap,
+            AppTextField(
               label: 'Password',
               controller: _passwordController,
               obscureText: _obscure,
+              monospace: true,
+              prefixIcon: Icons.key_rounded,
               onChanged: (_) => setState(() {}),
               suffixIcon: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -197,66 +215,66 @@ class _EntryEditorScreenState extends ConsumerState<EntryEditorScreen> {
                   IconButton(
                     tooltip: _obscure ? 'Show' : 'Hide',
                     icon: Icon(
-                      _obscure ? Icons.visibility : Icons.visibility_off,
+                      _obscure
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                      size: 20,
                     ),
                     onPressed: () => setState(() => _obscure = !_obscure),
                   ),
                   IconButton(
                     tooltip: 'Generate password',
-                    icon: const Icon(Icons.casino_outlined),
+                    icon: Icon(Icons.casino_outlined, color: c.accent),
                     onPressed: _openGenerator,
                   ),
+                  const SizedBox(width: AppSpacing.xs),
                 ],
               ),
             ),
-            const SizedBox(height: AppSpacing.sm),
-            StrengthMeter(password: _passwordController.text),
+            const SizedBox(height: AppSpacing.smd),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+              child: StrengthMeter(password: _passwordController.text),
+            ),
             const SizedBox(height: AppSpacing.md),
-            VaultTextField(
+            AppTextField(
               label: 'Website',
               controller: _urlController,
               hint: 'example.com',
               keyboardType: TextInputType.url,
+              prefixIcon: Icons.language_rounded,
             ),
-            const SizedBox(height: AppSpacing.md),
-            VaultTextField(
+            const SizedBox(height: AppSpacing.lg),
+            const SectionHeader(
+              title: 'Two-factor',
+              subtitle: 'If this account shows you rolling 6-digit codes, '
+                  'paste its setup link or secret key here and Vaultly will '
+                  'show the codes too.',
+            ),
+            AppTextField(
               label: 'Two-factor authentication (TOTP)',
               controller: _totpController,
               hint: 'Setup link (otpauth://…) or secret key — optional',
               errorText: _totpError,
+              monospace: true,
+              prefixIcon: Icons.pin_outlined,
               onChanged: (_) {
                 if (_totpError != null) {
                   setState(() => _totpError = null);
                 }
               },
             ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              'If this account shows you rolling 6-digit codes, paste its '
-              'setup link or secret key here and Vaultly will show the '
-              'codes too.',
-              style: AppTextStyles.caption.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            const Text('Notes', style: AppTextStyles.label),
-            const SizedBox(height: AppSpacing.sm),
-            TextField(
+            const SizedBox(height: AppSpacing.lg),
+            const SectionHeader(title: 'Notes'),
+            AppTextField(
+              label: 'Notes',
               controller: _notesController,
-              maxLines: 4,
-              style: AppTextStyles.body,
-              decoration: const InputDecoration(
-                hintText: 'Anything else worth remembering',
-              ),
+              hint: 'Anything else worth remembering',
+              maxLines: 5,
+              minLines: 3,
+              clearable: false,
+              keyboardType: TextInputType.multiline,
             ),
-            const SizedBox(height: AppSpacing.lg),
-            VaultButton(
-              label: _isEditing ? 'Save changes' : 'Add to vault',
-              isLoading: _busy,
-              onPressed: _busy ? null : _save,
-            ),
-            const SizedBox(height: AppSpacing.lg),
           ],
         ),
       ),
