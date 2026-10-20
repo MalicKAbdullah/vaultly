@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:core_crypto/core_crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vaultkey/src/core/storage_keys.dart';
@@ -233,6 +235,160 @@ void main() {
       expect(fileStore.bytes, isNull);
       expect(storage.store, isEmpty);
       expect(await auth.hasMasterPassword(), isFalse);
+    });
+  });
+
+  group('recovery key', () {
+    VaultRepository repo() =>
+        VaultRepository(fileStore: fileStore, cipher: const CipherService());
+
+    test('stores only a wrap: neither the key nor the vault key', () async {
+      final setup = await auth.setup(goodPassword);
+      final code = await auth.createRecoveryKey(setup.key);
+      expect(await auth.hasRecoveryKey(), isTrue);
+      final normalized = RecoveryKey.normalize(code)!;
+      for (final v in storage.store.values) {
+        expect(v, isNot(contains(normalized)));
+        expect(v, isNot(contains(code)));
+      }
+    });
+
+    test('resets a forgotten password with data intact', () async {
+      final setup = await auth.setup(goodPassword);
+      final entries = [makeEntry(id: 'a'), makeEntry(id: 'b', title: 'Two')];
+      await repo().save(entries, setup.key, setup.salt);
+      final code = await auth.createRecoveryKey(setup.key);
+      storage.store[VaultKeyKeys.biometricEnabled] = 'true';
+
+      final result = await auth.resetWithRecoveryKey(
+        recoveryKey: code.toLowerCase().replaceAll('-', ' '),
+        newPassword: 'brand new secret',
+      );
+      expect(result, isA<UnlockSuccess>());
+      expect(await repo().load((result as UnlockSuccess).key), entries);
+      expect(await auth.unlock(goodPassword), isA<UnlockWrongPassword>());
+      expect(await auth.unlock('brand new secret'), isA<UnlockSuccess>());
+      expect(storage.store[VaultKeyKeys.biometricEnabled], isNull);
+
+      // The same recovery key still works after the reset.
+      final again = await auth.resetWithRecoveryKey(
+        recoveryKey: code,
+        newPassword: 'third secret!',
+      );
+      expect(again, isA<UnlockSuccess>());
+      expect(await repo().load((again as UnlockSuccess).key), entries);
+    });
+
+    test('a wrong key is rejected, counts toward the cooldown', () async {
+      final setup = await auth.setup(goodPassword);
+      await auth.createRecoveryKey(setup.key);
+      final verifier = storage.store[VaultKeyKeys.verifier];
+
+      UnlockResult? last;
+      for (var i = 0; i < MasterAuthService.maxFreeAttempts; i++) {
+        last = await auth.resetWithRecoveryKey(
+          recoveryKey: RecoveryKey.generate(),
+          newPassword: 'brand new secret',
+        );
+      }
+      expect(last, isA<UnlockWrongPassword>());
+      expect((last as UnlockWrongPassword).cooldown, isNotNull);
+      expect(storage.store[VaultKeyKeys.verifier], verifier);
+      expect(await auth.unlock(goodPassword), isA<UnlockCoolingDown>());
+    });
+
+    test('malformed input or no recovery key is rejected', () async {
+      final setup = await auth.setup(goodPassword);
+      expect(
+        await auth.resetWithRecoveryKey(
+          recoveryKey: RecoveryKey.generate(),
+          newPassword: 'brand new secret',
+        ),
+        isA<UnlockWrongPassword>(),
+      );
+      await auth.createRecoveryKey(setup.key);
+      expect(
+        await auth.resetWithRecoveryKey(
+          recoveryKey: 'not-a-key',
+          newPassword: 'brand new secret',
+        ),
+        isA<UnlockWrongPassword>(),
+      );
+    });
+
+    test('regenerating invalidates the old key', () async {
+      final setup = await auth.setup(goodPassword);
+      final first = await auth.createRecoveryKey(setup.key);
+      final second = await auth.createRecoveryKey(setup.key);
+      expect(
+        await auth.resetWithRecoveryKey(
+          recoveryKey: first,
+          newPassword: 'brand new secret',
+        ),
+        isA<UnlockWrongPassword>(),
+      );
+      expect(
+        await auth.resetWithRecoveryKey(
+          recoveryKey: second,
+          newPassword: 'brand new secret',
+        ),
+        isA<UnlockSuccess>(),
+      );
+    });
+
+    test('a password change invalidates the recovery key', () async {
+      final setup = await auth.setup(goodPassword);
+      final code = await auth.createRecoveryKey(setup.key);
+      await auth.changeMasterPassword(
+        oldPassword: goodPassword,
+        newPassword: 'brand new secret',
+      );
+      expect(await auth.hasRecoveryKey(), isFalse);
+      expect(
+        await auth.resetWithRecoveryKey(
+          recoveryKey: code,
+          newPassword: 'third secret!',
+        ),
+        isA<UnlockWrongPassword>(),
+      );
+    });
+
+    test('a key-proven change re-keys the vault and keeps data', () async {
+      final setup = await auth.setup(goodPassword);
+      final entries = [makeEntry(id: 'a')];
+      await repo().save(entries, setup.key, setup.salt);
+      final held = Uint8List.fromList(setup.key);
+
+      final changed = await auth.changeMasterPasswordWithKey(
+        currentKey: held,
+        newPassword: 'brand new secret',
+      );
+      expect(held, setup.key, reason: "the caller's key is left as it is");
+      expect(await repo().load(changed.key), entries);
+      expect(await auth.unlock('brand new secret'), isA<UnlockSuccess>());
+      expect(await auth.unlock(goodPassword), isA<UnlockWrongPassword>());
+    });
+
+    test('a key-proven change rejects a key that is not the vault key',
+        () async {
+      await auth.setup(goodPassword);
+      expect(
+        () => auth.changeMasterPasswordWithKey(
+          currentKey: Uint8List(32),
+          newPassword: 'brand new secret',
+        ),
+        throwsStateError,
+      );
+    });
+
+    test('the one-time offer is due until shown', () async {
+      final setup = await auth.setup(goodPassword);
+      expect(await auth.recoveryOfferDue(), isTrue);
+      await auth.markRecoveryOffered();
+      expect(await auth.recoveryOfferDue(), isFalse);
+      storage.store.remove(VaultKeyKeys.recoveryOffered);
+      await auth.createRecoveryKey(setup.key);
+      expect(await auth.recoveryOfferDue(), isFalse);
     });
   });
 }

@@ -20,6 +20,8 @@ final class UnlockSuccess extends UnlockResult {
   final Uint8List salt;
 }
 
+/// The master password — or, for [MasterAuthService.resetWithRecoveryKey],
+/// the recovery key — was not right.
 final class UnlockWrongPassword extends UnlockResult {
   const UnlockWrongPassword({required this.failedAttempts, this.cooldown});
 
@@ -41,6 +43,12 @@ final class UnlockCoolingDown extends UnlockResult {
 /// per-user random salt. The password itself is never stored; correctness is
 /// verified by decrypting a known sentinel encrypted with the derived key
 /// (AES-GCM authentication makes a wrong key fail loudly).
+///
+/// A recovery key (see [RecoveryKey]) is the way back in when the password is
+/// forgotten: the vault key is also stored wrapped under it with
+/// [SecretWrapper]. The recovery key itself is never stored. Changing the
+/// password changes the vault key, so the old wrap is deleted and the caller
+/// creates a fresh recovery key from the new session key.
 final class MasterAuthService {
   MasterAuthService({
     required ISecureStorage storage,
@@ -48,7 +56,9 @@ final class MasterAuthService {
     required CipherService cipher,
     required IVaultFileStore fileStore,
     required Clock clock,
-  })  : _storage = storage,
+    SecretWrapper wrapper = const SecretWrapper(),
+  })  : _wrapper = wrapper,
+        _storage = storage,
         _kdf = keyDerivation,
         _cipher = cipher,
         _fileStore = fileStore,
@@ -59,6 +69,7 @@ final class MasterAuthService {
   final CipherService _cipher;
   final IVaultFileStore _fileStore;
   final Clock _clock;
+  final SecretWrapper _wrapper;
 
   static const String _sentinel = 'vaultkey:verifier:v1';
   static const int minPasswordLength = 8;
@@ -103,6 +114,10 @@ final class MasterAuthService {
     }
 
     _zero(key);
+    return _recordFailure();
+  }
+
+  Future<UnlockWrongPassword> _recordFailure() async {
     final attempts = await _failedAttempts() + 1;
     await _storage.write(
       key: VaultKeyKeys.failedAttempts,
@@ -144,15 +159,101 @@ final class MasterAuthService {
 
   /// Changes the master password: verifies [oldPassword], derives a fresh
   /// salt + key, and re-encrypts the vault file and verifier with the new
-  /// key. The old key can no longer decrypt anything afterwards.
+  /// key. The old key can no longer decrypt anything afterwards, and the
+  /// recovery key (which wrapped the old key) stops working.
   Future<UnlockResult> changeMasterPassword({
     required String oldPassword,
     required String newPassword,
   }) async {
     final result = await unlock(oldPassword);
     if (result is! UnlockSuccess) return result;
+    final changed = await _rekey(result.key, newPassword);
+    await _storage.delete(key: VaultKeyKeys.recoveryWrap);
+    return changed;
+  }
 
-    final oldKey = result.key;
+  /// [changeMasterPassword] for a session whose identity was just proven
+  /// another way (a fresh biometric prompt): [currentKey] is the unlocked
+  /// vault key. It is copied, so the caller's buffer is left as it is.
+  Future<UnlockSuccess> changeMasterPasswordWithKey({
+    required Uint8List currentKey,
+    required String newPassword,
+  }) async {
+    final key = Uint8List.fromList(currentKey);
+    if (!await _verifierMatches(key)) {
+      throw StateError('Session key does not match the vault');
+    }
+    final changed = await _rekey(key, newPassword);
+    await _storage.delete(key: VaultKeyKeys.recoveryWrap);
+    return changed;
+  }
+
+  Future<bool> hasRecoveryKey() async =>
+      await _storage.read(key: VaultKeyKeys.recoveryWrap) != null;
+
+  /// Whether to offer a recovery key once: none exists and none was offered.
+  Future<bool> recoveryOfferDue() async =>
+      !await hasRecoveryKey() &&
+      await _storage.read(key: VaultKeyKeys.recoveryOffered) != 'true';
+
+  /// Records that the one-time offer was shown (taken or declined).
+  Future<void> markRecoveryOffered() =>
+      _storage.write(key: VaultKeyKeys.recoveryOffered, value: 'true');
+
+  /// Wraps [vaultKey] under a new recovery key, replacing any earlier wrap so
+  /// the previous recovery key stops working. Returns the key in display form
+  /// for the user to save; it is not stored.
+  Future<String> createRecoveryKey(Uint8List vaultKey) async {
+    if (!await _verifierMatches(vaultKey)) {
+      throw StateError('Session key does not match the vault');
+    }
+    final recoveryKey = RecoveryKey.generate();
+    final wrap = await _wrapper.wrap(
+      secret: vaultKey,
+      passphrase: RecoveryKey.normalize(recoveryKey)!,
+    );
+    await _storage.write(key: VaultKeyKeys.recoveryWrap, value: wrap);
+    await markRecoveryOffered();
+    return recoveryKey;
+  }
+
+  /// Forgotten master password: unwraps the vault key with [recoveryKey],
+  /// re-encrypts the vault under [newPassword] and re-wraps the new key
+  /// under the same recovery key. Wrong keys count toward the same cooldown
+  /// as wrong passwords.
+  Future<UnlockResult> resetWithRecoveryKey({
+    required String recoveryKey,
+    required String newPassword,
+  }) async {
+    assert(
+      newPassword.length >= minPasswordLength,
+      'Master password must be at least $minPasswordLength characters',
+    );
+    final remaining = await cooldownRemaining();
+    if (remaining > Duration.zero) {
+      return UnlockCoolingDown(remaining: remaining);
+    }
+    final wrap = await _storage.read(key: VaultKeyKeys.recoveryWrap);
+    final normalized = RecoveryKey.normalize(recoveryKey);
+    final oldKey = wrap == null || normalized == null
+        ? null
+        : await _wrapper.unwrap(wrapped: wrap, passphrase: normalized);
+    if (oldKey == null || !await _verifierMatches(oldKey)) {
+      if (oldKey != null) _zero(oldKey);
+      return _recordFailure();
+    }
+    await _resetAttempts();
+    final changed = await _rekey(oldKey, newPassword);
+    await _storage.write(
+      key: VaultKeyKeys.recoveryWrap,
+      value: await _wrapper.wrap(secret: changed.key, passphrase: normalized!),
+    );
+    return changed;
+  }
+
+  /// Re-encrypts the vault and verifier from [oldKey] to a key derived from
+  /// [newPassword] with a fresh salt, then zeroes [oldKey].
+  Future<UnlockSuccess> _rekey(Uint8List oldKey, String newPassword) async {
     final newSalt = await _cipher.generateSalt();
     final newKey = await _kdf.deriveKey(password: newPassword, salt: newSalt);
 
