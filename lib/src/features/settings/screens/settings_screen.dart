@@ -9,6 +9,7 @@ import 'package:vaultkey/src/core/di.dart';
 import 'package:vaultkey/src/core/router/app_router.dart';
 import 'package:vaultkey/src/core/ui/vault_ui.dart';
 import 'package:vaultkey/src/features/auth/providers/auth_providers.dart';
+import 'package:vaultkey/src/features/auth/widgets/identity_check.dart';
 import 'package:vaultkey/src/features/settings/providers/settings_providers.dart';
 import 'package:vaultkey/src/features/settings/widgets/autofill_section.dart';
 import 'package:vaultkey/src/features/vault/providers/vault_providers.dart';
@@ -79,6 +80,41 @@ class SettingsScreen extends ConsumerWidget {
     }
   }
 
+  Future<void> _recoveryKey(BuildContext context, WidgetRef ref) async {
+    if (!await confirmVaultIdentity(
+      context,
+      ref,
+      reason: 'Create a new recovery key',
+    )) {
+      return;
+    }
+    if (await ref.read(masterAuthServiceProvider).hasRecoveryKey()) {
+      if (!context.mounted) return;
+      final replace = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Replace your recovery key?'),
+          content: const Text(
+            'Your current recovery key will stop working. Recovery keys are '
+            'never stored, so the current one cannot be shown again.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Create new key'),
+            ),
+          ],
+        ),
+      );
+      if (replace != true) return;
+    }
+    ref.read(recoveryPromptProvider.notifier).state = RecoveryPrompt.show;
+  }
+
   String _autoLockLabel(Duration d) =>
       d.inMinutes == 1 ? '1 minute' : '${d.inMinutes} minutes';
 
@@ -86,6 +122,7 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final c = SuiteColors.of(context);
     final biometrics = ref.watch(biometricStateProvider).valueOrNull;
+    final hasRecoveryKey = ref.watch(hasRecoveryKeyProvider).valueOrNull;
     final autoLock = ref.watch(autoLockProvider);
     final supported = biometrics?.supported ?? false;
 
@@ -148,6 +185,17 @@ class SettingsScreen extends ConsumerWidget {
                         onTap: () =>
                             context.push(AppRoutes.changeMasterPassword),
                       ),
+                      SettingsTile(
+                        icon: Icons.key_rounded,
+                        title: 'Recovery key',
+                        subtitle: switch (hasRecoveryKey) {
+                          true => 'Set · create a new one if you lost it',
+                          false =>
+                            'Not set · needed if you forget your password',
+                          null => null,
+                        },
+                        onTap: () => _recoveryKey(context, ref),
+                      ),
                     ],
                   ),
                   // Hides itself entirely on devices without autofill (iOS).
@@ -161,6 +209,11 @@ class SettingsScreen extends ConsumerWidget {
                     child: AutoBackupSection(
                       service: ref.watch(autoBackupServiceProvider),
                       producer: ref.watch(vaultBackupProducerProvider),
+                      onRevealGate: () => confirmVaultIdentity(
+                        context,
+                        ref,
+                        reason: 'Show your backup passphrase',
+                      ),
                     ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
