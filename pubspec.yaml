@@ -44,47 +44,47 @@ dependencies:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_crypto
-      ref: 0c2e30e91c4c1ce9d8c292e75216f6b586506d00
+      ref: 5c21f136649d951e2423c03ffdbba7186fb362b1
   core_storage:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_storage
-      ref: 0c2e30e91c4c1ce9d8c292e75216f6b586506d00
+      ref: 5c21f136649d951e2423c03ffdbba7186fb362b1
   core_security:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_security
-      ref: 0c2e30e91c4c1ce9d8c292e75216f6b586506d00
+      ref: 5c21f136649d951e2423c03ffdbba7186fb362b1
   core_theme:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_theme
-      ref: 0c2e30e91c4c1ce9d8c292e75216f6b586506d00
+      ref: 5c21f136649d951e2423c03ffdbba7186fb362b1
   core_ui:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_ui
-      ref: 0c2e30e91c4c1ce9d8c292e75216f6b586506d00
+      ref: 5c21f136649d951e2423c03ffdbba7186fb362b1
   core_lock:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_lock
-      ref: 0c2e30e91c4c1ce9d8c292e75216f6b586506d00
+      ref: 5c21f136649d951e2423c03ffdbba7186fb362b1
   core_backup:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_backup
-      ref: 0c2e30e91c4c1ce9d8c292e75216f6b586506d00
+      ref: 5c21f136649d951e2423c03ffdbba7186fb362b1
   core_notify:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_notify
-      ref: 0c2e30e91c4c1ce9d8c292e75216f6b586506d00
+      ref: 5c21f136649d951e2423c03ffdbba7186fb362b1
   core_update:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_update
-      ref: 0c2e30e91c4c1ce9d8c292e75216f6b586506d00
+      ref: 5c21f136649d951e2423c03ffdbba7186fb362b1
 dev_dependencies:
   flutter_test:
     sdk: flutter
