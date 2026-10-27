@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vaultkey/src/core/app_info.dart';
+import 'package:vaultkey/src/core/appearance_provider.dart';
 import 'package:vaultkey/src/core/di.dart';
 import 'package:vaultkey/src/core/router/app_router.dart';
 import 'package:vaultkey/src/core/ui/vault_ui.dart';
@@ -140,6 +141,14 @@ class SettingsScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  const SectionHeader(title: 'Appearance'),
+                  RowGroup(
+                    children: [
+                      AppearanceSetting(
+                        controller: ref.watch(appearanceProvider),
+                      ),
+                    ],
+                  ),
                   const SectionHeader(title: 'Security'),
                   RowGroup(
                     separatorIndent: settingsRowIndent,
