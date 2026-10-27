@@ -1,3 +1,4 @@
+import 'package:vaultkey/src/core/background_worker.dart';
 import 'package:vaultkey/src/features/generator/services/strength_estimator.dart';
 import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
 
@@ -8,6 +9,7 @@ final class VaultHealthReport {
   const VaultHealthReport({
     required this.score,
     required this.analyzedCount,
+    required this.strongCount,
     required this.weak,
     required this.reused,
     required this.old,
@@ -18,6 +20,9 @@ final class VaultHealthReport {
 
   /// Number of entries that carry a password and were analyzed.
   final int analyzedCount;
+
+  /// Analyzed entries whose password is [StrengthLevel.strong].
+  final int strongCount;
 
   final List<VaultEntry> weak;
   final List<VaultEntry> reused;
@@ -47,53 +52,131 @@ abstract final class VaultHealthAnalyzer {
   static VaultHealthReport analyze(
     List<VaultEntry> entries, {
     required DateTime now,
-  }) {
-    final analyzed = entries.where((e) => e.password.isNotEmpty).toList();
-    if (analyzed.isEmpty) {
-      return const VaultHealthReport(
+  }) =>
+      _HealthFindings.compute(_HealthInput.of(entries, now)).reportFor(entries);
+
+  /// [analyze] on [worker]. Only passwords and timestamps travel to the
+  /// worker and only positions come back, so neither direction copies the
+  /// entries themselves.
+  static Future<VaultHealthReport> analyzeOn(
+    IBackgroundWorker worker,
+    List<VaultEntry> entries, {
+    required DateTime now,
+  }) async {
+    final findings = await _findingsOn(worker, _HealthInput.of(entries, now));
+    return findings.reportFor(entries);
+  }
+
+  // Separate from [analyzeOn] so the task closure captures only [input],
+  // not the entries in the caller's frame.
+  static Future<_HealthFindings> _findingsOn(
+    IBackgroundWorker worker,
+    _HealthInput input,
+  ) =>
+      worker.run(() => _HealthFindings.compute(input));
+}
+
+final class _HealthInput {
+  _HealthInput.of(List<VaultEntry> entries, DateTime now)
+      : passwords = [for (final e in entries) e.password],
+        changedAt = [
+          for (final e in entries) e.passwordChangedAt.microsecondsSinceEpoch,
+        ],
+        now = now.microsecondsSinceEpoch;
+
+  final List<String> passwords;
+
+  /// `passwordChangedAt` per entry, in microseconds since the epoch.
+  final List<int> changedAt;
+  final int now;
+}
+
+/// Analysis results as positions in the analyzed entry list.
+final class _HealthFindings {
+  const _HealthFindings({
+    required this.score,
+    required this.analyzedCount,
+    required this.strongCount,
+    required this.weak,
+    required this.reused,
+    required this.old,
+  });
+
+  factory _HealthFindings.compute(_HealthInput input) {
+    final passwords = input.passwords;
+    final passwordCounts = <String, int>{};
+    var analyzedCount = 0;
+    for (final password in passwords) {
+      if (password.isEmpty) continue;
+      analyzedCount++;
+      passwordCounts.update(password, (c) => c + 1, ifAbsent: () => 1);
+    }
+    if (analyzedCount == 0) {
+      return const _HealthFindings(
         score: 100,
         analyzedCount: 0,
+        strongCount: 0,
         weak: [],
         reused: [],
         old: [],
       );
     }
 
-    final passwordCounts = <String, int>{};
-    for (final entry in analyzed) {
-      passwordCounts.update(entry.password, (c) => c + 1, ifAbsent: () => 1);
-    }
-
-    final weak = <VaultEntry>[];
-    final reused = <VaultEntry>[];
-    final old = <VaultEntry>[];
+    // Reused passwords are estimated once.
+    final levels = <String, StrengthLevel>{};
+    final oldAfter = VaultHealthAnalyzer.oldAfter.inMicroseconds;
+    final weak = <int>[];
+    final reused = <int>[];
+    final old = <int>[];
+    var strongCount = 0;
     var totalPenalty = 0.0;
 
-    for (final entry in analyzed) {
+    for (var i = 0; i < passwords.length; i++) {
+      final password = passwords[i];
+      if (password.isEmpty) continue;
       var penalty = 0.0;
-      final level = StrengthEstimator.estimate(entry.password).level;
+      final level =
+          levels[password] ??= StrengthEstimator.estimate(password).level;
+      if (level == StrengthLevel.strong) strongCount++;
       if (level == StrengthLevel.weak || level == StrengthLevel.fair) {
-        weak.add(entry);
-        penalty += _weakPenalty;
+        weak.add(i);
+        penalty += VaultHealthAnalyzer._weakPenalty;
       }
-      if (passwordCounts[entry.password]! > 1) {
-        reused.add(entry);
-        penalty += _reusedPenalty;
+      if (passwordCounts[password]! > 1) {
+        reused.add(i);
+        penalty += VaultHealthAnalyzer._reusedPenalty;
       }
-      if (now.difference(entry.passwordChangedAt) > oldAfter) {
-        old.add(entry);
-        penalty += _oldPenalty;
+      if (input.now - input.changedAt[i] > oldAfter) {
+        old.add(i);
+        penalty += VaultHealthAnalyzer._oldPenalty;
       }
       totalPenalty += penalty > 1.0 ? 1.0 : penalty;
     }
 
-    final score = (100 * (1 - totalPenalty / analyzed.length)).round();
-    return VaultHealthReport(
+    final score = (100 * (1 - totalPenalty / analyzedCount)).round();
+    return _HealthFindings(
       score: score.clamp(0, 100),
-      analyzedCount: analyzed.length,
+      analyzedCount: analyzedCount,
+      strongCount: strongCount,
       weak: weak,
       reused: reused,
       old: old,
     );
   }
+
+  final int score;
+  final int analyzedCount;
+  final int strongCount;
+  final List<int> weak;
+  final List<int> reused;
+  final List<int> old;
+
+  VaultHealthReport reportFor(List<VaultEntry> entries) => VaultHealthReport(
+        score: score,
+        analyzedCount: analyzedCount,
+        strongCount: strongCount,
+        weak: [for (final i in weak) entries[i]],
+        reused: [for (final i in reused) entries[i]],
+        old: [for (final i in old) entries[i]],
+      );
 }

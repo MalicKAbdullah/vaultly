@@ -23,6 +23,9 @@ class EntryTile extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
+  /// The height of a tile whose title and subtitle fit on one line each.
+  static const double minHeight = 76;
+
   @override
   Widget build(BuildContext context) {
     final c = SuiteColors.of(context);
@@ -34,7 +37,7 @@ class EntryTile extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 76),
+        constraints: const BoxConstraints(minHeight: minHeight),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(
             AppSpacing.md,

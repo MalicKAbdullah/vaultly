@@ -172,6 +172,7 @@ Future<List<Override>> _overrides({
           .overrideWith(() => FakeVaultNotifier(entries ?? _entries)),
       secureStorageProvider.overrideWithValue(storage ?? FakeSecureStorage()),
       fileStoreProvider.overrideWithValue(fileStore ?? InMemoryFileStore()),
+      backgroundWorkerProvider.overrideWithValue(const InlineWorker()),
       keyDerivationProvider.overrideWithValue(FakeKeyDerivation()),
       clockProvider.overrideWithValue(FixedClock(_now)),
       systemClipboardProvider.overrideWithValue(FakeClipboard()),

@@ -13,9 +13,13 @@ import 'package:vaultkey/src/features/health/services/vault_health_analyzer.dart
 import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
 import 'package:vaultkey/src/features/vault/providers/vault_providers.dart';
 
-final vaultHealthProvider = Provider<VaultHealthReport>((ref) {
-  final entries = ref.watch(vaultEntriesProvider).valueOrNull ?? const [];
-  return VaultHealthAnalyzer.analyze(
+/// The vault's health, analyzed on a worker isolate. While a change is
+/// re-analyzed the previous report stays available as `valueOrNull`, so
+/// only the very first analysis after an unlock has no value.
+final vaultHealthProvider = FutureProvider<VaultHealthReport>((ref) async {
+  final entries = await ref.watch(vaultEntriesProvider.future);
+  return VaultHealthAnalyzer.analyzeOn(
+    ref.read(backgroundWorkerProvider),
     entries,
     now: ref.read(clockProvider).now(),
   );
@@ -114,7 +118,7 @@ class HealthScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final report = ref.watch(vaultHealthProvider);
+    final report = ref.watch(vaultHealthProvider).valueOrNull;
     final entries = ref.watch(vaultEntriesProvider).valueOrNull ?? const [];
     final now = ref.watch(clockProvider).now();
     final c = SuiteColors.of(context);
@@ -132,12 +136,14 @@ class HealthScreen extends ConsumerWidget {
           padding: const EdgeInsets.only(bottom: AppSpacing.xxl),
           children: [
             TabHeader(
-              eyebrow: report.analyzedCount == 0
+              eyebrow: report == null || report.analyzedCount == 0
                   ? 'Password health'
                   : '${report.analyzedCount} passwords checked',
               title: 'Security',
             ),
-            if (report.analyzedCount == 0)
+            if (report == null)
+              const SizedBox.shrink()
+            else if (report.analyzedCount == 0)
               const Padding(
                 padding: EdgeInsets.fromLTRB(
                   AppSpacing.gutter,
