@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:uuid/uuid.dart';
 import 'package:vaultkey/src/core/app_info.dart';
+import 'package:vaultkey/src/core/background_worker.dart';
 import 'package:vaultkey/src/core/clock.dart';
 import 'package:vaultkey/src/core/interfaces/autofill_bridge.dart';
 import 'package:vaultkey/src/core/interfaces/biometric_key_vault.dart';
@@ -23,8 +24,8 @@ import 'package:vaultkey/src/features/sync/services/sync_ledger.dart';
 import 'package:vaultkey/src/features/vault/data/vault_repository.dart';
 
 /// Composition root. Tests override the leaf providers (storage, file store,
-/// key derivation, clock, clipboard, backup folder, biometrics) with
-/// in-memory fakes — no platform channels.
+/// key derivation, clock, clipboard, backup folder, biometrics, background
+/// worker) with in-memory fakes — no platform channels.
 final clockProvider = Provider<Clock>((_) => const SystemClock());
 
 final secureStorageProvider = Provider<ISecureStorage>(
@@ -33,6 +34,15 @@ final secureStorageProvider = Provider<ISecureStorage>(
 
 final fileStoreProvider = Provider<IVaultFileStore>(
   (_) => const DocumentsVaultFileStore(),
+);
+
+final backgroundWorkerProvider = Provider<IBackgroundWorker>(
+  (_) => const IsolateWorker(),
+);
+
+/// The one ordered handle on the vault file every component writes through.
+final vaultFileProvider = Provider<VaultFile>(
+  (ref) => VaultFile(ref.watch(fileStoreProvider)),
 );
 
 final cipherServiceProvider = Provider<CipherService>(
@@ -84,15 +94,16 @@ final masterAuthServiceProvider = Provider<MasterAuthService>(
     storage: ref.watch(secureStorageProvider),
     keyDerivation: ref.watch(keyDerivationProvider),
     cipher: ref.watch(cipherServiceProvider),
-    fileStore: ref.watch(fileStoreProvider),
+    fileStore: ref.watch(vaultFileProvider),
     clock: ref.watch(clockProvider),
   ),
 );
 
 final vaultRepositoryProvider = Provider<VaultRepository>(
   (ref) => VaultRepository(
-    fileStore: ref.watch(fileStoreProvider),
+    file: ref.watch(vaultFileProvider),
     cipher: ref.watch(cipherServiceProvider),
+    worker: ref.watch(backgroundWorkerProvider),
   ),
 );
 

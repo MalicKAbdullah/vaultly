@@ -2,6 +2,7 @@ import 'package:core_crypto/core_crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vaultkey/src/core/interfaces/vault_file_store.dart';
 import 'package:vaultkey/src/core/di.dart';
 import 'package:vaultkey/src/core/interfaces/autofill_bridge.dart';
 import 'package:vaultkey/src/core/router/app_router.dart';
@@ -125,8 +126,11 @@ void main() {
         clock: clock,
       );
       final setup = await auth.setup(password);
-      await VaultRepository(fileStore: fileStore, cipher: cipher)
-          .save(entries, setup.key, setup.salt);
+      await VaultRepository(
+        file: VaultFile(fileStore),
+        cipher: cipher,
+        worker: const InlineWorker(),
+      ).save(entries, setup.key, setup.salt);
 
       final bridge = FakeAutofillBridge(
         request: const AutofillFillRequest(domain: 'github.com'),
@@ -137,6 +141,7 @@ void main() {
           overrides: [
             secureStorageProvider.overrideWithValue(storage),
             fileStoreProvider.overrideWithValue(fileStore),
+            backgroundWorkerProvider.overrideWithValue(const InlineWorker()),
             keyDerivationProvider.overrideWithValue(kdf),
             clockProvider.overrideWithValue(clock),
             systemClipboardProvider.overrideWithValue(FakeClipboard()),

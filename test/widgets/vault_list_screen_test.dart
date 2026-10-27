@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +11,7 @@ import 'package:vaultkey/src/features/vault/screens/vault_list_screen.dart';
 import 'package:vaultkey/src/features/vault/widgets/entry_tile.dart';
 
 import '../fakes/fakes.dart';
+import '../perf/vault_fixture.dart';
 import 'helpers.dart';
 
 void main() {
@@ -41,6 +44,8 @@ void main() {
   Future<void> pumpList(
     WidgetTester tester, {
     List<VaultEntry>? seed,
+    VaultNotifier Function()? vault,
+    bool settle = true,
   }) async {
     // A tall phone, so the overview and every row are laid out at once.
     tester.view.devicePixelRatio = 1;
@@ -50,8 +55,9 @@ void main() {
       ProviderScope(
         overrides: [
           vaultEntriesProvider
-              .overrideWith(() => FakeVaultNotifier(seed ?? entries)),
+              .overrideWith(vault ?? () => FakeVaultNotifier(seed ?? entries)),
           secureStorageProvider.overrideWithValue(FakeSecureStorage()),
+          backgroundWorkerProvider.overrideWithValue(const InlineWorker()),
           clockProvider.overrideWithValue(
             FixedClock(DateTime(2026, 7, 5)),
           ),
@@ -60,7 +66,7 @@ void main() {
         child: const MaterialApp(home: VaultListScreen()),
       ),
     );
-    await tester.pumpAndSettle();
+    if (settle) await tester.pumpAndSettle();
   }
 
   testWidgets('shows every entry from the vault', (tester) async {
@@ -149,4 +155,40 @@ void main() {
     expect(find.text('GitHub'), findsNothing);
     expect(find.text('Bank of Dartland'), findsOneWidget);
   });
+
+  testWidgets('while the vault loads it shows skeleton rows, never "empty"',
+      (tester) async {
+    await pumpList(tester, vault: _PendingVault.new, settle: false);
+    await tester.pump();
+    expect(find.textContaining('Your vault is empty'), findsNothing);
+    expect(find.byType(Skeleton), findsWidgets);
+  });
+
+  testWidgets('a vault that failed to open shows an error, not "empty"',
+      (tester) async {
+    await pumpList(tester, vault: _BrokenVault.new);
+    expect(find.textContaining('Your vault is empty'), findsNothing);
+    expect(find.text('Your vault could not be opened'), findsOneWidget);
+  });
+
+  testWidgets('a 1,000-item vault builds only the rows on screen',
+      (tester) async {
+    final big = realisticVault(1000);
+    await pumpList(tester, seed: big);
+    final built = find.byType(EntryTile).evaluate().length;
+    expect(built, greaterThan(0));
+    expect(built, lessThan(60));
+    // The overview has its numbers once the background analysis is in.
+    expect(find.byType(Skeleton), findsNothing);
+  });
+}
+
+class _PendingVault extends VaultNotifier {
+  @override
+  Future<List<VaultEntry>> build() => Completer<List<VaultEntry>>().future;
+}
+
+class _BrokenVault extends VaultNotifier {
+  @override
+  List<VaultEntry> build() => throw StateError('decrypt failed');
 }

@@ -1,6 +1,7 @@
 import 'package:core_theme/core_theme.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:core_update/core_update.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,10 +9,12 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:vaultkey/src/core/di.dart';
 import 'package:vaultkey/src/core/router/app_router.dart';
+import 'package:vaultkey/src/core/startup_timeline.dart';
+import 'package:vaultkey/src/core/ui/sliver_row_group.dart';
 import 'package:vaultkey/src/core/ui/vault_ui.dart';
 import 'package:vaultkey/src/features/backup/providers/backup_providers.dart';
-import 'package:vaultkey/src/features/generator/services/strength_estimator.dart';
 import 'package:vaultkey/src/features/health/screens/health_screen.dart';
+import 'package:vaultkey/src/features/health/services/vault_health_analyzer.dart';
 import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
 import 'package:vaultkey/src/features/vault/providers/vault_providers.dart';
 import 'package:vaultkey/src/features/vault/widgets/entry_tile.dart';
@@ -27,6 +30,8 @@ class VaultListScreen extends ConsumerStatefulWidget {
 }
 
 class _VaultListScreenState extends ConsumerState<VaultListScreen> {
+  static final _eyebrowFormat = DateFormat('EEEE, d MMMM');
+
   late final TextEditingController _search =
       TextEditingController(text: ref.read(vaultQueryProvider).search);
   final _searchFocus = FocusNode();
@@ -102,31 +107,37 @@ class _VaultListScreenState extends ConsumerState<VaultListScreen> {
 
   List<Widget> _group(String title, String? subtitle, List<VaultEntry> list) {
     if (list.isEmpty) return const [];
-    return [
-      const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.lg)),
-      SliverPadding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
-        sliver: SliverToBoxAdapter(
-          child: SectionHeader(title: title, subtitle: subtitle),
-        ),
+    return _section(
+      title,
+      subtitle,
+      SliverRowGroup(
+        separatorIndent: 74,
+        itemCount: list.length,
+        itemBuilder: (_, i) => _tile(list[i]),
       ),
-      SliverPadding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
-        sliver: SliverToBoxAdapter(
-          child: RowGroup(
-            separatorIndent: 74,
-            children: [for (final e in list) _tile(e)],
+    );
+  }
+
+  List<Widget> _section(String title, String? subtitle, Widget group) => [
+        const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.lg)),
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
+          sliver: SliverToBoxAdapter(
+            child: SectionHeader(title: title, subtitle: subtitle),
           ),
         ),
-      ),
-    ];
-  }
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
+          sliver: group,
+        ),
+      ];
 
   @override
   Widget build(BuildContext context) {
     final c = SuiteColors.of(context);
     final entries = ref.watch(filteredEntriesProvider);
-    final all = ref.watch(vaultEntriesProvider).valueOrNull ?? const [];
+    final vault = ref.watch(vaultEntriesProvider);
+    final all = vault.valueOrNull ?? const [];
     final query = ref.watch(vaultQueryProvider);
     final banner = ref.watch(backupBannerProvider);
     final now = ref.watch(clockProvider).now();
@@ -137,7 +148,7 @@ class _VaultListScreenState extends ConsumerState<VaultListScreen> {
     final slivers = <Widget>[
       SliverToBoxAdapter(
         child: TabHeader(
-          eyebrow: DateFormat('EEEE, d MMMM').format(now),
+          eyebrow: _eyebrowFormat.format(now),
           title: 'Vault',
           actions: [
             _SortButton(
@@ -182,12 +193,42 @@ class _VaultListScreenState extends ConsumerState<VaultListScreen> {
             ),
           ),
         ),
-      SliverToBoxAdapter(
-        child: _FilterChips(query: query, entries: all),
-      ),
+      const SliverToBoxAdapter(child: _FilterChips()),
     ];
 
-    if (all.isEmpty) {
+    if (vault.hasError) {
+      slivers.add(
+        const SliverFillRemaining(
+          hasScrollBody: false,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.gutter,
+              AppSpacing.xl,
+              AppSpacing.gutter,
+              120,
+            ),
+            child: AppEmptyState(
+              icon: Icons.error_outline_rounded,
+              title: 'Your vault could not be opened',
+              message: 'The vault file did not decrypt. Lock Vaultly and '
+                  'unlock it again, or restore a backup.',
+            ),
+          ),
+        ),
+      );
+    } else if (!vault.hasValue) {
+      slivers.addAll(
+        _section(
+          'All items',
+          query.sort.label,
+          SliverRowGroup(
+            separatorIndent: 74,
+            itemCount: 8,
+            itemBuilder: (_, __) => const _SkeletonTile(),
+          ),
+        ),
+      );
+    } else if (all.isEmpty) {
       slivers.add(
         SliverFillRemaining(
           hasScrollBody: false,
@@ -236,14 +277,14 @@ class _VaultListScreenState extends ConsumerState<VaultListScreen> {
     } else if (browsing) {
       slivers
         ..add(
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(
+          const SliverPadding(
+            padding: EdgeInsets.fromLTRB(
               AppSpacing.gutter,
               AppSpacing.sm,
               AppSpacing.gutter,
               0,
             ),
-            sliver: SliverToBoxAdapter(child: _Overview(entries: all)),
+            sliver: SliverToBoxAdapter(child: _Overview()),
           ),
         )
         ..addAll(
@@ -276,6 +317,9 @@ class _VaultListScreenState extends ConsumerState<VaultListScreen> {
       );
     }
     slivers.add(const SliverToBoxAdapter(child: SizedBox(height: 120)));
+    if (!kReleaseMode && vault.hasValue) {
+      StartupTimeline.markOnceAfterFrame('first vault frame');
+    }
 
     return CallbackShortcuts(
       bindings: {
@@ -464,16 +508,14 @@ class _SortButton extends StatelessWidget {
 }
 
 class _FilterChips extends ConsumerWidget {
-  const _FilterChips({required this.query, required this.entries});
-
-  final VaultQuery query;
-  final List<VaultEntry> entries;
+  const _FilterChips();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (entries.isEmpty) return const SizedBox.shrink();
+    final tally = ref.watch(vaultTallyProvider);
+    if (tally.total == 0) return const SizedBox.shrink();
+    final query = ref.watch(vaultQueryProvider);
     final notifier = ref.read(vaultQueryProvider.notifier);
-    final favorites = entries.where((e) => e.favorite).length;
     return SizedBox(
       height: 48,
       child: ListView(
@@ -486,7 +528,7 @@ class _FilterChips extends ConsumerWidget {
           AppChip(
             label: 'Favorites',
             icon: Icons.star_rounded,
-            count: favorites,
+            count: tally.favorites,
             selected: query.favoritesOnly,
             onTap: notifier.toggleFavoritesOnly,
           ),
@@ -495,7 +537,7 @@ class _FilterChips extends ConsumerWidget {
             AppChip(
               label: category.label,
               icon: categoryIcon(category),
-              count: entries.where((e) => e.category == category).length,
+              count: tally.byCategory[category]!,
               selected: query.category == category,
               onTap: () => notifier.setCategory(
                 query.category == category ? null : category,
@@ -511,26 +553,38 @@ class _FilterChips extends ConsumerWidget {
 /// The vault at a glance: the health score as the hero figure, then
 /// password strength and two-factor coverage side by side.
 class _Overview extends ConsumerWidget {
-  const _Overview({required this.entries});
-
-  final List<VaultEntry> entries;
+  const _Overview();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final c = SuiteColors.of(context);
-    final report = ref.watch(vaultHealthProvider);
-    final withPassword = entries.where((e) => e.password.isNotEmpty).toList();
-    final strong = withPassword
-        .where(
-          (e) =>
-              StrengthEstimator.estimate(e.password).level ==
-              StrengthLevel.strong,
-        )
-        .length;
-    final logins =
-        entries.where((e) => e.category == EntryCategory.login).length;
-    final twoFactor = entries.where((e) => e.totp != null).length;
+    final tally = ref.watch(vaultTallyProvider);
+    final analyzed = ref.watch(vaultHealthProvider).valueOrNull;
+    // Until the first analysis lands, the figures it drives are laid out
+    // with placeholder values and covered by skeletons, so the cards keep
+    // their final size and nothing below them moves when it arrives.
+    final loading = analyzed == null;
+    final report = analyzed ??
+        VaultHealthReport(
+          score: 100,
+          analyzedCount: tally.withPassword,
+          strongCount: 0,
+          weak: const [],
+          reused: const [],
+          old: const [],
+        );
+    Widget masked(Widget child) => loading ? _SkeletonOver(child) : child;
+
+    final logins = tally.byCategory[EntryCategory.login]!;
+    final twoFactor = tally.withTotp;
+    final strong = report.strongCount;
+    final withPassword = report.analyzedCount;
     final tone = healthTone(report.score, c);
+    final caption = report.isHealthy
+        ? 'All ${report.analyzedCount} passwords look good'
+        : '${report.issueCount} to fix across '
+            '${report.analyzedCount} passwords';
+    final pill = StatusPill(label: healthLabel(report.score), color: tone);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -544,31 +598,45 @@ class _Overview extends ConsumerWidget {
                   'No passwords yet',
                   style: AppTextStyles.h2.copyWith(color: c.textPrimary),
                 )
-              : HealthScoreFigure(score: report.score),
+              : masked(HealthScoreFigure(score: report.score)),
           delta: report.analyzedCount == 0
               ? null
-              : StatusPill(label: healthLabel(report.score), color: tone),
-          deltaCaption: report.analyzedCount == 0
-              ? null
-              : report.isHealthy
-                  ? 'All ${report.analyzedCount} passwords look good'
-                  : '${report.issueCount} to fix across '
-                      '${report.analyzedCount} passwords',
+              : loading
+                  // The pill and the caption line as one masked block: the
+                  // caption is plain text the card would otherwise show.
+                  ? _SkeletonOver(
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          pill,
+                          const SizedBox(width: AppSpacing.sm),
+                          Text(caption, style: AppTextStyles.bodySmall),
+                        ],
+                      ),
+                    )
+                  : pill,
+          deltaCaption: report.analyzedCount == 0 || loading ? null : caption,
           footer: [
-            StatTile(
-              label: 'Weak',
-              value: '${report.weak.length}',
-              dotColor: c.negative,
+            masked(
+              StatTile(
+                label: 'Weak',
+                value: '${report.weak.length}',
+                dotColor: c.negative,
+              ),
             ),
-            StatTile(
-              label: 'Reused',
-              value: '${report.reused.length}',
-              dotColor: c.warning,
+            masked(
+              StatTile(
+                label: 'Reused',
+                value: '${report.reused.length}',
+                dotColor: c.warning,
+              ),
             ),
-            StatTile(
-              label: 'Old',
-              value: '${report.old.length}',
-              dotColor: c.info,
+            masked(
+              StatTile(
+                label: 'Old',
+                value: '${report.old.length}',
+                dotColor: c.info,
+              ),
             ),
           ],
         ),
@@ -581,12 +649,13 @@ class _Overview extends ConsumerWidget {
                 child: MetricCard(
                   label: 'Strong',
                   icon: Icons.verified_user_outlined,
-                  value: _Fraction(strong, withPassword.length),
+                  value: masked(_Fraction(strong, withPassword)),
                   caption: 'passwords',
-                  visual: AppProgressBar(
-                    value:
-                        withPassword.isEmpty ? 0 : strong / withPassword.length,
-                    color: c.positive,
+                  visual: masked(
+                    AppProgressBar(
+                      value: withPassword == 0 ? 0 : strong / withPassword,
+                      color: c.positive,
+                    ),
                   ),
                 ),
               ),
@@ -608,6 +677,51 @@ class _Overview extends ConsumerWidget {
       ],
     );
   }
+}
+
+/// Lays [child] out invisibly and shows a skeleton of exactly its size.
+class _SkeletonOver extends StatelessWidget {
+  const _SkeletonOver(this.child);
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Stack(
+        children: [
+          Visibility.maintain(visible: false, child: child),
+          const Positioned.fill(child: Skeleton(radius: AppSpacing.radiusXs)),
+        ],
+      );
+}
+
+/// A vault row while the vault loads: an [EntryTile]'s height and shape.
+class _SkeletonTile extends StatelessWidget {
+  const _SkeletonTile();
+
+  @override
+  Widget build(BuildContext context) => const SizedBox(
+        height: EntryTile.minHeight,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          child: Row(
+            children: [
+              Skeleton(width: 44, height: 44, radius: 13),
+              SizedBox(width: AppSpacing.smd + 2),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Skeleton(width: 140, height: 16),
+                    SizedBox(height: 8),
+                    Skeleton(width: 96, height: 12),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
 }
 
 class _Fraction extends StatelessWidget {
@@ -681,10 +795,12 @@ class _NotifyTriggerState extends ConsumerState<_NotifyTrigger> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final config = ref.read(autoBackupControllerProvider).valueOrNull;
-      final entries = ref.read(vaultEntriesProvider).valueOrNull ?? const [];
+      // Ignored here so an analysis the digest never awaits (already sent
+      // this month) cannot surface as an unhandled error.
+      final health = ref.read(vaultHealthProvider.future)..ignore();
       ref.read(vaultNotifierProvider).checkOnOpen(
             config: config,
-            entries: entries,
+            health: health,
             now: DateTime.now(),
           );
     });

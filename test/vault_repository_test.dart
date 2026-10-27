@@ -2,6 +2,8 @@ import 'dart:typed_data';
 
 import 'package:core_crypto/core_crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vaultkey/src/core/interfaces/vault_file_store.dart';
+import 'package:vaultkey/src/core/background_worker.dart';
 import 'package:vaultkey/src/features/vault/data/vault_repository.dart';
 import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
 
@@ -15,7 +17,11 @@ void main() {
 
   setUp(() async {
     fileStore = InMemoryFileStore();
-    repo = VaultRepository(fileStore: fileStore, cipher: const CipherService());
+    repo = VaultRepository(
+      file: VaultFile(fileStore),
+      cipher: const CipherService(),
+      worker: const IsolateWorker(),
+    );
     salt = Uint8List.fromList(List.generate(32, (i) => i));
     key = await FakeKeyDerivation().deriveKey(password: 'pw', salt: salt);
   });

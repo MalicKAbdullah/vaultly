@@ -2,7 +2,6 @@ import 'package:core_backup/core_backup.dart';
 import 'package:core_notify/core_notify.dart';
 import 'package:core_storage/core_storage.dart';
 import 'package:vaultkey/src/features/health/services/vault_health_analyzer.dart';
-import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
 
 /// On-device Vaultly notifications: a backup alert (auto-backup failed, or no
 /// backup in over a week) and a monthly vault-health digest. All computed
@@ -33,14 +32,16 @@ class VaultNotifier {
   static const String _backupShownKey = 'vaultkey_backup_alert_shown';
   static const String _healthMonthKey = 'vaultkey_health_digest_month';
 
+  /// [health] is the app's shared vault-health analysis, awaited only when
+  /// this month's digest is still due.
   Future<void> checkOnOpen({
     required AutoBackupConfig? config,
-    required List<VaultEntry> entries,
+    required Future<VaultHealthReport> health,
     required DateTime now,
   }) async {
     if (!await _notify.isPermitted()) return;
     await _checkBackup(config, now);
-    await _monthlyHealth(entries, now);
+    await _monthlyHealth(health, now);
   }
 
   Future<void> _checkBackup(AutoBackupConfig? config, DateTime now) async {
@@ -72,11 +73,14 @@ class VaultNotifier {
     await _storage.write(key: _backupShownKey, value: todayKey);
   }
 
-  Future<void> _monthlyHealth(List<VaultEntry> entries, DateTime now) async {
+  Future<void> _monthlyHealth(
+    Future<VaultHealthReport> health,
+    DateTime now,
+  ) async {
     final monthKey = '${now.year}-${now.month}';
     if (await _storage.read(key: _healthMonthKey) == monthKey) return;
 
-    final report = VaultHealthAnalyzer.analyze(entries, now: now);
+    final report = await health;
     // Record the month regardless, so we check at most once per month.
     await _storage.write(key: _healthMonthKey, value: monthKey);
     if (report.issueCount == 0) return;

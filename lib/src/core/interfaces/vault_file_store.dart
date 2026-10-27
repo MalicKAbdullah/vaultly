@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -47,5 +48,52 @@ final class DocumentsVaultFileStore implements IVaultFileStore {
     if (await file.exists()) {
       await file.delete();
     }
+  }
+}
+
+/// The vault file as the whole app sees it: every read, write and delete in
+/// one queue, and a generation counting the writes and deletes queued so
+/// far. All code that touches the file shares the one instance
+/// (`vaultFileProvider`), so a read taken earlier can tell it is out of date
+/// and a read queued after a write sees that write.
+final class VaultFile implements IVaultFileStore {
+  VaultFile(this._store);
+
+  final IVaultFileStore _store;
+  Future<void> _tail = Future.value();
+  int _generation = 0;
+
+  int get generation => _generation;
+
+  Future<T> _enqueue<T>(Future<T> Function() operation) {
+    final result = _tail.then((_) => operation());
+    _tail = result.then((_) {}, onError: (_) {});
+    return result;
+  }
+
+  /// The file's bytes, with the generation they belong to.
+  Future<({Uint8List? bytes, int generation})> readVersioned() {
+    final generation = _generation;
+    return _enqueue(
+      () async => (bytes: await _store.read(), generation: generation),
+    );
+  }
+
+  @override
+  Future<Uint8List?> read() => _enqueue(_store.read);
+
+  /// Takes the write's place in the queue now, even while [bytes] are still
+  /// being produced (encrypted), so no later read can see the older file.
+  @override
+  Future<void> write(FutureOr<Uint8List> bytes) {
+    _generation++;
+    final pending = Future.value(bytes)..ignore();
+    return _enqueue(() async => _store.write(await pending));
+  }
+
+  @override
+  Future<void> delete() {
+    _generation++;
+    return _enqueue(_store.delete);
   }
 }
