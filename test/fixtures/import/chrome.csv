@@ -1,0 +1,8 @@
+name,url,username,password,note
+github.com,https://github.com/login,octo@example.com,"pa,ss""word",
+accounts.google.com,https://accounts.google.com/,jane.doe@gmail.com,Gm41l!,"line one
+line two"
+bücher.de,https://www.bücher.de/,jürgen@beispiel.de,pässwörd🔑,Ünïcødé note — 中文
+,https://example.org/login,just-url-user,pw-only
+
+Short row,https://short.example

@@ -2,8 +2,11 @@
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
     <!-- Backup & vault-health notifications (Android 13+ asks at runtime). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-    <!-- In-app update check (GitHub release lookup) — the only network use. -->
+    <!-- In-app update check (GitHub release lookup) and device sync over the
+         local network. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- mDNS discovery of paired devices for sync. -->
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE"/>
     <!-- Install the downloaded update APK (in-app update). -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
     <application

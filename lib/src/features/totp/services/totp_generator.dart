@@ -4,7 +4,7 @@ import 'package:crypto/crypto.dart';
 import 'package:vaultkey/src/features/totp/models/totp_config.dart';
 import 'package:vaultkey/src/features/totp/services/base32.dart';
 
-/// Generates RFC 6238 time-based one-time codes (HMAC-SHA1 / HMAC-SHA256,
+/// Generates RFC 6238 time-based one-time codes (HMAC-SHA1 / SHA256 / SHA512,
 /// 6–8 digits, configurable period).
 abstract final class TotpGenerator {
   /// The code for [config] at [time]. Throws [FormatException] when the
@@ -42,6 +42,7 @@ abstract final class TotpGenerator {
     final hash = switch (config.algorithm) {
       TotpAlgorithm.sha1 => Hmac(sha1, key),
       TotpAlgorithm.sha256 => Hmac(sha256, key),
+      TotpAlgorithm.sha512 => Hmac(sha512, key),
     }
         .convert(message)
         .bytes;

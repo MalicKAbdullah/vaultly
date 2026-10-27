@@ -1,104 +1,43 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vaultkey/src/features/backup/services/csv_codec.dart';
+import 'package:vaultkey/src/features/importers/models/imported_item.dart';
+import 'package:vaultkey/src/features/importers/parsers/import_detector.dart';
 import 'package:vaultkey/src/features/totp/models/totp_config.dart';
 
 import 'fakes/fakes.dart';
 
 void main() {
-  group('CsvCodec.parseImport', () {
-    test('parses Chrome-style export (name,url,username,password,note)', () {
-      const csv = 'name,url,username,password,note\n'
-          'GitHub,https://github.com,octo,s3cret!,work account\n'
-          'Bank,https://bank.example,jo,hunter2,\n';
-      final rows = CsvCodec.parseImport(csv);
-      expect(rows.length, 2);
-      expect(rows.first.name, 'GitHub');
-      expect(rows.first.url, 'https://github.com');
-      expect(rows.first.username, 'octo');
-      expect(rows.first.password, 's3cret!');
-      expect(rows.first.note, 'work account');
-    });
+  ImportBatch reimport(String csv) =>
+      (ImportDetector.readCsv(csv) as ImportReady).batch;
 
-    test('parses Bitwarden-style headers case-insensitively', () {
-      const csv =
-          'folder,favorite,type,Name,notes,fields,login_uri,login_username,login_password\n'
-          ',,login,Email,my note,,https://mail.example,me@example.com,pa55word\n';
-      final rows = CsvCodec.parseImport(csv);
-      expect(rows.single.name, 'Email');
-      expect(rows.single.url, 'https://mail.example');
-      expect(rows.single.username, 'me@example.com');
-      expect(rows.single.password, 'pa55word');
-      expect(rows.single.note, 'my note');
-    });
-
-    test('handles quoted fields with commas, quotes, and newlines', () {
-      const csv = 'name,url,username,password,note\n'
-          '"Acme, Inc.",https://acme.example,user,"pa,ss""word","line one\nline two"\n';
-      final rows = CsvCodec.parseImport(csv);
-      expect(rows.single.name, 'Acme, Inc.');
-      expect(rows.single.password, 'pa,ss"word');
-      expect(rows.single.note, 'line one\nline two');
-    });
-
-    test('handles CRLF line endings', () {
-      const csv =
-          'name,username,password\r\nSite,me,secret123\r\nOther,you,pass456\r\n';
-      final rows = CsvCodec.parseImport(csv);
-      expect(rows.length, 2);
-      expect(rows.last.password, 'pass456');
-    });
-
-    test('skips blank lines and rows with no usable data', () {
-      const csv = 'name,username,password\n\nSite,me,secret\n,,\n';
-      final rows = CsvCodec.parseImport(csv);
-      expect(rows.length, 1);
-    });
-
-    test('falls back to the url as a name when the name is missing', () {
-      const csv = 'name,url,username,password\n,ex.com,me,secret\n';
-      expect(CsvCodec.parseImport(csv).single.name, 'ex.com');
-    });
-
-    test('throws FormatException when no known headers exist', () {
-      expect(
-        () => CsvCodec.parseImport('foo,bar\n1,2\n'),
-        throwsFormatException,
+  group('CsvCodec.parseCsv', () {
+    test('quoted fields with commas, quotes, and newlines', () {
+      final rows = CsvCodec.parseCsv(
+        'a,b\n"Acme, Inc.","pa,ss""word"\n"line one\nline two",x\n',
       );
+      expect(rows[1], ['Acme, Inc.', 'pa,ss"word']);
+      expect(rows[2], ['line one\nline two', 'x']);
+    });
+
+    test('CRLF and LF line endings', () {
+      expect(CsvCodec.parseCsv('a,b\r\n1,2\r\n3,4\n'), [
+        ['a', 'b'],
+        ['1', '2'],
+        ['3', '4'],
+      ]);
+    });
+
+    test('a quote inside an unquoted field stays literal', () {
+      expect(CsvCodec.parseCsv('say ""hi"",b')[0], ['say ""hi""', 'b']);
     });
 
     test('empty content yields no rows', () {
-      expect(CsvCodec.parseImport(''), isEmpty);
+      expect(CsvCodec.parseCsv(''), isEmpty);
     });
   });
 
-  group('CsvCodec totp column', () {
-    test('parses a Bitwarden login_totp otpauth URI', () {
-      const csv = 'name,login_username,login_password,login_totp\n'
-          'GitHub,octo,s3cret,'
-          'otpauth://totp/GitHub:octo?secret=JBSWY3DPEHPK3PXP&digits=8\n';
-      final row = CsvCodec.parseImport(csv).single;
-      expect(row.totpConfig, isNotNull);
-      expect(row.totpConfig!.secret, 'JBSWY3DPEHPK3PXP');
-      expect(row.totpConfig!.digits, 8);
-      expect(row.toEntry(id: 'x', now: DateTime(2026)).totp, row.totpConfig);
-    });
-
-    test('accepts a bare base32 secret in the totp column', () {
-      const csv = 'name,username,password,totp\n'
-          'Site,me,pw,jbsw y3dp ehpk 3pxp\n';
-      final row = CsvCodec.parseImport(csv).single;
-      expect(row.totpConfig!.secret, 'JBSWY3DPEHPK3PXP');
-    });
-
-    test('an unusable totp cell never blocks importing the password', () {
-      const csv = 'name,username,password,totp\n'
-          'Site,me,pw,definitely not a secret!\n';
-      final row = CsvCodec.parseImport(csv).single;
-      expect(row.totpConfig, isNull);
-      expect(row.password, 'pw');
-    });
-
-    test('export → import round-trips the two-factor secret', () {
+  group('CsvCodec export round-trip', () {
+    test('export → import keeps the two-factor secret', () {
       final entries = [
         makeEntry(
           title: 'GitHub',
@@ -107,9 +46,9 @@ void main() {
         ),
         makeEntry(title: 'No 2FA', username: 'plain'),
       ];
-      final rows = CsvCodec.parseImport(CsvCodec.export(entries));
-      expect(rows[0].totpConfig, entries[0].totp);
-      expect(rows[1].totpConfig, isNull);
+      final items = reimport(CsvCodec.export(entries)).items;
+      expect(items[0].totp, entries[0].totp);
+      expect(items[1].totp, isNull);
     });
   });
 
@@ -151,12 +90,12 @@ void main() {
           notes: '',
         ),
       ];
-      final rows = CsvCodec.parseImport(CsvCodec.export(entries));
-      expect(rows.length, 2);
-      expect(rows[0].name, 'Site A');
-      expect(rows[0].password, 'p1,with commas');
-      expect(rows[0].note, 'note "quoted"');
-      expect(rows[1].username, 'b@example.com');
+      final items = reimport(CsvCodec.export(entries)).items;
+      expect(items.length, 2);
+      expect(items[0].title, 'Site A');
+      expect(items[0].password, 'p1,with commas');
+      expect(items[0].notes, 'note "quoted"');
+      expect(items[1].username, 'b@example.com');
     });
   });
 }
