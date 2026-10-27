@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:core_crypto/core_crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vaultkey/src/core/interfaces/vault_file_store.dart';
 import 'package:vaultkey/src/core/background_worker.dart';
 import 'package:vaultkey/src/features/backup/services/backup_codec.dart';
 import 'package:vaultkey/src/features/backup/services/csv_codec.dart';
@@ -78,7 +79,7 @@ void main() {
     test('the private key is only in the encrypted vault file', () async {
       final store = InMemoryFileStore();
       final repo = VaultRepository(
-        fileStore: store,
+        file: VaultFile(store),
         cipher: const CipherService(),
         worker: const IsolateWorker(),
       );

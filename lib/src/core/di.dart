@@ -40,6 +40,11 @@ final backgroundWorkerProvider = Provider<IBackgroundWorker>(
   (_) => const IsolateWorker(),
 );
 
+/// The one ordered handle on the vault file every component writes through.
+final vaultFileProvider = Provider<VaultFile>(
+  (ref) => VaultFile(ref.watch(fileStoreProvider)),
+);
+
 final cipherServiceProvider = Provider<CipherService>(
   (_) => const CipherService(),
 );
@@ -89,14 +94,14 @@ final masterAuthServiceProvider = Provider<MasterAuthService>(
     storage: ref.watch(secureStorageProvider),
     keyDerivation: ref.watch(keyDerivationProvider),
     cipher: ref.watch(cipherServiceProvider),
-    fileStore: ref.watch(fileStoreProvider),
+    fileStore: ref.watch(vaultFileProvider),
     clock: ref.watch(clockProvider),
   ),
 );
 
 final vaultRepositoryProvider = Provider<VaultRepository>(
   (ref) => VaultRepository(
-    fileStore: ref.watch(fileStoreProvider),
+    file: ref.watch(vaultFileProvider),
     cipher: ref.watch(cipherServiceProvider),
     worker: ref.watch(backgroundWorkerProvider),
   ),

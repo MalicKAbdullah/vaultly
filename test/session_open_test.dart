@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:core_crypto/core_crypto.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vaultkey/src/core/interfaces/vault_file_store.dart';
 import 'package:vaultkey/src/core/background_worker.dart';
 import 'package:vaultkey/src/core/di.dart';
 import 'package:vaultkey/src/core/interfaces/biometric_key_vault.dart';
@@ -43,7 +44,7 @@ void main() {
     biometrics = FakeBiometricAuthenticator();
     setup = await auth().setup(password);
     await VaultRepository(
-      fileStore: fileStore,
+      file: VaultFile(fileStore),
       cipher: const CipherService(),
       worker: const InlineWorker(),
     ).save(entries, setup.key, setup.salt);
@@ -183,33 +184,29 @@ void main() {
     expect(c.read(vaultEntriesProvider).requireValue.map((e) => e.id), ['b']);
   });
 
-  // Creating, unwrapping and re-wrapping the recovery key are three real
-  // Argon2id derivations, slow on a shared CI runner.
-  test('a recovery reset opens the vault re-encrypted under the new key',
+  test('a file re-keyed after the read-ahead is read again before opening',
       () async {
-    final clock = Stopwatch()..start();
-    void step(String what) =>
-        printOnFailure('${clock.elapsedMilliseconds} ms: $what');
     final c = launch();
     await settle();
-    step('locked');
-    await session(c).unlock(password);
-    step('unlocked');
-    final recovery = await session(c).createRecoveryKey();
-    step('recovery key created');
-    c.listen(vaultEntriesProvider, (_, __) {});
-    session(c).lock();
-    await settle();
-    step('locked again');
+    // Locked, with the old file already read ahead. Re-keying while locked
+    // is what a recovery reset does; a password change takes the same
+    // write path without the recovery key's Argon2id.
+    final changed =
+        await c.read(masterAuthServiceProvider).changeMasterPassword(
+              oldPassword: password,
+              newPassword: 'a brand new password',
+            );
+    expect(changed, isA<UnlockSuccess>());
+    expect(fileStore.readCount, 2);
 
-    final result = await session(c).resetWithRecoveryKey(
-      recoveryKey: recovery,
-      newPassword: 'a brand new password',
+    expect(
+      await session(c).unlock('a brand new password'),
+      isA<UnlockSuccess>(),
     );
-    step('reset returned $result');
-    expect(result, isA<UnlockSuccess>());
+    c.listen(vaultEntriesProvider, (_, __) {});
     expect(c.read(vaultEntriesProvider).requireValue, entries);
-  }, timeout: const Timeout(Duration(minutes: 2)));
+    expect(fileStore.readCount, 3);
+  });
 
   test('the unlock prerequisites started at launch are handed over once',
       () async {

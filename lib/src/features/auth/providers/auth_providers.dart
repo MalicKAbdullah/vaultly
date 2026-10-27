@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:core_crypto/core_crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vaultkey/src/core/di.dart';
 import 'package:vaultkey/src/core/startup_timeline.dart';
 import 'package:vaultkey/src/core/storage_keys.dart';
 import 'package:vaultkey/src/features/auth/services/master_auth_service.dart';
+import 'package:vaultkey/src/features/vault/data/vault_repository.dart';
 import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
 
 enum AuthStatus { unknown, needsSetup, locked, unlocked }
@@ -61,9 +61,10 @@ final class SessionNotifier extends Notifier<AuthStatus> {
   Uint8List? _salt;
   bool _viaBiometric = false;
 
-  /// The vault file as it is now; replaced whenever the file can change
-  /// while locked.
-  late Future<EncryptedPayload?> _payload;
+  /// The vault file read ahead at launch or lock. A write queued after it
+  /// (a recovery reset re-keys the file while locked) makes [_open] read
+  /// the file again; see [VaultRepository.current].
+  late Future<StoredVault> _payload;
 
   UnlockPrerequisites? _prerequisites;
 
@@ -181,8 +182,6 @@ final class SessionNotifier extends Notifier<AuthStatus> {
     if (result is UnlockSuccess) {
       // The held biometric key is the old one — drop it.
       await ref.read(biometricServiceProvider).disable();
-      // The reset re-encrypted the vault file under the new key.
-      _prefetchVault();
       await _open(result);
     }
     return result;
@@ -270,7 +269,6 @@ final class SessionNotifier extends Notifier<AuthStatus> {
     _wipe();
     await ref.read(biometricServiceProvider).disable();
     await _auth.eraseAll();
-    _prefetchVault();
     // The onboarding flag was erased with everything else — reload it so
     // the fresh start begins at the intro again.
     ref.invalidate(onboardingSeenProvider);
@@ -282,10 +280,11 @@ final class SessionNotifier extends Notifier<AuthStatus> {
   /// unlocks, and surfaces as [VaultNotifier]'s error state.
   Future<void> _open(UnlockSuccess result, {bool viaBiometric = false}) async {
     final timer = Stopwatch()..start();
-    final vault = await AsyncValue.guard(
-      () async =>
-          ref.read(vaultRepositoryProvider).open(await _payload, result.key),
-    );
+    final repository = ref.read(vaultRepositoryProvider);
+    final vault = await AsyncValue.guard(() async {
+      final stored = await repository.current(await _payload);
+      return repository.open(stored.payload, result.key);
+    });
     StartupTimeline.mark('vault decrypted in ${timer.elapsedMilliseconds} ms');
     _adopt(result, viaBiometric: viaBiometric);
     _opened = vault;

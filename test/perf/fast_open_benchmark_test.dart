@@ -7,6 +7,7 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vaultkey/src/core/interfaces/vault_file_store.dart';
 import 'package:vaultkey/src/core/background_worker.dart';
 import 'package:vaultkey/src/core/di.dart';
 import 'package:vaultkey/src/core/ui/sliver_row_group.dart';
@@ -28,9 +29,10 @@ import 'vault_fixture.dart';
 void main() {
   const size = 1000;
   const runs = 7;
-  // An eager 1,000-row frame costs seconds on a CI runner; three keep the
-  // suite's other CPU-heavy tests (Argon2id) inside their timeouts.
-  const frameRuns = 3;
+  // An eager 1,000-row frame costs seconds and a large widget tree on a CI
+  // runner, alongside other test files running memory-hard Argon2id; one
+  // frame per case keeps those inside their timeouts.
+  const frameRuns = 1;
   final entries = realisticVault(size);
   final now = DateTime(2026, 10, 20);
 
@@ -88,7 +90,7 @@ void main() {
       final salt = Uint8List(32);
       final fileStore = InMemoryFileStore();
       await VaultRepository(
-        fileStore: fileStore,
+        file: VaultFile(fileStore),
         cipher: const CipherService(),
         worker: const InlineWorker(),
       ).save(entries, key, salt);
@@ -98,7 +100,7 @@ void main() {
     test('UI isolate vs worker isolate', () async {
       Future<void> decodeOn(IBackgroundWorker worker) async {
         final repo = VaultRepository(
-          fileStore: InMemoryFileStore(),
+          file: VaultFile(InMemoryFileStore()),
           cipher: const CipherService(),
           worker: worker,
         );

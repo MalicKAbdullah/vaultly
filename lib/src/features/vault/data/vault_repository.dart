@@ -6,6 +6,16 @@ import 'package:vaultkey/src/core/background_worker.dart';
 import 'package:vaultkey/src/core/interfaces/vault_file_store.dart';
 import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
 
+/// The encrypted vault file as read, tagged with the [VaultFile.generation]
+/// it was read at.
+final class StoredVault {
+  const StoredVault({required this.payload, required this.generation});
+
+  /// Null when no vault file exists yet.
+  final EncryptedPayload? payload;
+  final int generation;
+}
+
 /// Persists the vault as one AES-GCM-encrypted JSON document.
 ///
 /// The whole entry list is serialized, encrypted with the session vault key,
@@ -18,29 +28,33 @@ import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
 /// decrypt-and-parse and encode-and-encrypt run on [IBackgroundWorker].
 final class VaultRepository {
   VaultRepository({
-    required IVaultFileStore fileStore,
+    required VaultFile file,
     required CipherService cipher,
     required IBackgroundWorker worker,
-  })  : _fileStore = fileStore,
+  })  : _file = file,
         _cipher = cipher,
         _worker = worker;
 
-  final IVaultFileStore _fileStore;
+  final VaultFile _file;
   final CipherService _cipher;
   final IBackgroundWorker _worker;
 
-  /// The last [save]'s file write. Reads wait for it, so a payload fetched
-  /// right after a save (a lock mid-edit) is never the older file.
-  Future<void> _lastWrite = Future.value();
-
   static const int _formatVersion = 1;
 
-  /// The encrypted vault as stored, or null when no vault file exists yet.
-  Future<EncryptedPayload?> readPayload() async {
-    await _lastWrite;
-    final bytes = await _fileStore.read();
-    return bytes == null ? null : EncryptedPayload.fromBytes(bytes);
+  /// The encrypted vault as stored now.
+  Future<StoredVault> readPayload() async {
+    final read = await _file.readVersioned();
+    final bytes = read.bytes;
+    return StoredVault(
+      payload: bytes == null ? null : EncryptedPayload.fromBytes(bytes),
+      generation: read.generation,
+    );
   }
+
+  /// [read] when nothing has been queued to write the file since; otherwise
+  /// the file read again, after those writes.
+  Future<StoredVault> current(StoredVault read) =>
+      read.generation == _file.generation ? Future.value(read) : readPayload();
 
   /// Decrypts and parses [payload] with [key] off the UI isolate. Throws
   /// when the key does not match or the file was tampered with.
@@ -52,22 +66,20 @@ final class VaultRepository {
   }
 
   Future<List<VaultEntry>> load(Uint8List key) async =>
-      open(await readPayload(), key);
+      open((await readPayload()).payload, key);
 
+  /// Queues the file write at once and encrypts on the worker meanwhile, so
+  /// a read issued after this call (a lock mid-edit) sees the saved vault.
   Future<void> save(
     List<VaultEntry> entries,
     Uint8List key,
     Uint8List salt,
   ) {
     final keyCopy = Uint8List.fromList(key);
-    final write = _lastWrite.then((_) async {
-      final bytes = await _encryptOn(_worker, _cipher, entries, keyCopy, salt);
-      await _fileStore.write(bytes);
-    }).whenComplete(() => _zero(keyCopy));
-    // A failed save is reported to its caller; later reads and saves still
-    // proceed.
-    _lastWrite = write.then((_) {}, onError: (_) {});
-    return write;
+    return _file.write(
+      _encryptOn(_worker, _cipher, entries, keyCopy, salt)
+          .whenComplete(() => _zero(keyCopy)),
+    );
   }
 
   // The worker tasks are built in static functions so their closures capture

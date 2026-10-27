@@ -2,6 +2,7 @@ import 'package:core_crypto/core_crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vaultkey/src/core/interfaces/vault_file_store.dart';
 import 'package:vaultkey/src/core/di.dart';
 import 'package:vaultkey/src/core/interfaces/autofill_bridge.dart';
 import 'package:vaultkey/src/core/router/app_router.dart';
@@ -126,7 +127,7 @@ void main() {
       );
       final setup = await auth.setup(password);
       await VaultRepository(
-        fileStore: fileStore,
+        file: VaultFile(fileStore),
         cipher: cipher,
         worker: const InlineWorker(),
       ).save(entries, setup.key, setup.salt);

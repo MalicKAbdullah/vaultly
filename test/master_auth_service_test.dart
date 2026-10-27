@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:core_crypto/core_crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vaultkey/src/core/interfaces/vault_file_store.dart';
 import 'package:vaultkey/src/core/background_worker.dart';
 import 'package:vaultkey/src/core/storage_keys.dart';
 import 'package:vaultkey/src/features/auth/services/master_auth_service.dart';
@@ -150,7 +151,7 @@ void main() {
 
   group('change master password', () {
     VaultRepository repo() => VaultRepository(
-          fileStore: fileStore,
+          file: VaultFile(fileStore),
           cipher: const CipherService(),
           worker: const IsolateWorker(),
         );
@@ -230,7 +231,7 @@ void main() {
         () async {
       final setup = await auth.setup(goodPassword);
       await VaultRepository(
-        fileStore: fileStore,
+        file: VaultFile(fileStore),
         cipher: const CipherService(),
         worker: const IsolateWorker(),
       ).save([makeEntry(id: 'a')], setup.key, setup.salt);
@@ -245,7 +246,7 @@ void main() {
 
   group('recovery key', () {
     VaultRepository repo() => VaultRepository(
-          fileStore: fileStore,
+          file: VaultFile(fileStore),
           cipher: const CipherService(),
           worker: const IsolateWorker(),
         );
