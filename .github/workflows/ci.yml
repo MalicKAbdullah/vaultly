@@ -31,3 +31,6 @@ jobs:
         run: flutter test
       - name: Build debug APK
         run: flutter build apk --debug
+      - name: Kotlin unit tests
+        working-directory: android
+        run: ./gradlew :app:testDebugUnitTest --no-daemon
