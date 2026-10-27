@@ -1,4 +1,5 @@
 import 'package:core_crypto/core_crypto.dart';
+import 'package:core_lock/core_lock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -55,6 +56,11 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  bool passwordHasFocus(WidgetTester tester) => tester
+      .widget<TextField>(find.byType(TextField).first)
+      .focusNode!
+      .hasFocus;
+
   ProviderContainer containerOf(WidgetTester tester) =>
       ProviderScope.containerOf(tester.element(find.byType(UnlockScreen)));
 
@@ -80,10 +86,11 @@ void main() {
     expect(containerOf(tester).read(sessionProvider), AuthStatus.unlocked);
   });
 
-  testWidgets('biometric button is hidden when biometrics are not enabled',
+  testWidgets('without biometrics there is no button and the field has focus',
       (tester) async {
     await pumpUnlock(tester);
-    expect(find.text('Unlock with biometrics'), findsNothing);
+    expect(find.byType(LockBiometricButton), findsNothing);
+    expect(passwordHasFocus(tester), isTrue);
   });
 
   /// Enables biometric unlock by wrapping the real derived key in storage,
@@ -107,7 +114,8 @@ void main() {
     // Prompt fails so the auto-trigger cannot unlock and hide the screen.
     final biometrics = await enableBiometrics(result: false);
     await pumpUnlock(tester, biometrics: biometrics);
-    expect(find.text('Unlock with biometrics'), findsOneWidget);
+    expect(find.byType(LockBiometricButton), findsOneWidget);
+    expect(passwordHasFocus(tester), isFalse);
     expect(containerOf(tester).read(sessionProvider), AuthStatus.locked);
   });
 
@@ -141,11 +149,11 @@ void main() {
     final biometrics = await enableBiometrics(result: false);
     await pumpUnlock(tester, biometrics: biometrics);
     expect(containerOf(tester).read(sessionProvider), AuthStatus.locked);
-    expect(find.text('Unlock with biometrics'), findsOneWidget);
+    expect(find.byType(LockBiometricButton), findsOneWidget);
 
     // The retry succeeds this time.
     biometrics.result = true;
-    await tester.tap(find.text('Unlock with biometrics'));
+    await tester.tap(find.byType(LockBiometricButton));
     await tester.pumpAndSettle();
     expect(containerOf(tester).read(sessionProvider), AuthStatus.unlocked);
   });
@@ -161,19 +169,19 @@ void main() {
     expect(containerOf(tester).read(sessionProvider), AuthStatus.unlocked);
   });
 
-  testWidgets('shows a hardware-unavailable note when enabled but unsupported',
-      (tester) async {
+  testWidgets(
+      'hides the button and focuses the field when enabled but '
+      'unsupported', (tester) async {
     final biometrics = await enableBiometrics(supported: false);
     await pumpUnlock(tester, biometrics: biometrics);
-    expect(find.text('Unlock with biometrics'), findsOneWidget);
-    expect(find.textContaining('Biometric hardware is not available'),
-        findsOneWidget);
+    expect(find.byType(LockBiometricButton), findsNothing);
     // Never auto-unlocks on unsupported hardware; password remains.
     expect(
       containerOf(tester).read(sessionProvider),
       isNot(AuthStatus.unlocked),
     );
     expect(find.byType(TextField), findsOneWidget);
+    expect(passwordHasFocus(tester), isTrue);
   });
 
   testWidgets('a persisted cooldown disables the unlock button',
@@ -202,7 +210,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
 
     // The cooldown notice is visible and Unlock is disabled.
-    expect(find.textContaining('Too many attempts'), findsOneWidget);
+    expect(find.textContaining('Too many attempts. Try again in '),
+        findsOneWidget);
 
     await tester.enterText(find.byType(TextField).first, password);
     await tester.tap(find.text('Unlock'));
