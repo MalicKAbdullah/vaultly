@@ -64,6 +64,8 @@ class MainActivity : FlutterFragmentActivity() {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, BiometricKeyVault.CHANNEL)
             .setMethodCallHandler(BiometricKeyVault(this))
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CredentialChannel.CHANNEL)
+            .setMethodCallHandler(CredentialChannel(this))
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
