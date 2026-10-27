@@ -141,7 +141,6 @@ class SettingsScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SectionHeader(title: 'Appearance'),
                   RowGroup(
                     children: [
                       AppearanceSetting(
@@ -149,6 +148,7 @@ class SettingsScreen extends ConsumerWidget {
                       ),
                     ],
                   ),
+                  const SizedBox(height: AppSpacing.lg),
                   const SectionHeader(title: 'Security'),
                   RowGroup(
                     separatorIndent: settingsRowIndent,
