@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:core_backup/core_backup.dart';
 import 'package:core_storage/core_storage.dart';
+import 'package:vaultkey/src/core/background_worker.dart';
 import 'package:vaultkey/src/core/clock.dart';
 import 'package:vaultkey/src/core/interfaces/autofill_bridge.dart';
 import 'package:vaultkey/src/core/interfaces/key_derivation.dart';
@@ -41,16 +43,33 @@ final class FakeSecureStorage implements ISecureStorage {
   Future<Map<String, String>> readAll() async => Map.of(store);
 }
 
+/// Runs worker tasks on the calling isolate. Widget tests need it: their
+/// fake-async zone never delivers a real isolate's result.
+final class InlineWorker implements IBackgroundWorker {
+  const InlineWorker();
+
+  @override
+  Future<R> run<R>(FutureOr<R> Function() task) async => task();
+}
+
 /// In-memory vault file.
 final class InMemoryFileStore implements IVaultFileStore {
   Uint8List? bytes;
   int writeCount = 0;
+  int readCount = 0;
+
+  /// When set, writes wait for it — a slow disk, for ordering tests.
+  Future<void>? writeGate;
 
   @override
-  Future<Uint8List?> read() async => bytes;
+  Future<Uint8List?> read() async {
+    readCount++;
+    return bytes;
+  }
 
   @override
   Future<void> write(Uint8List data) async {
+    await writeGate;
     bytes = Uint8List.fromList(data);
     writeCount++;
   }

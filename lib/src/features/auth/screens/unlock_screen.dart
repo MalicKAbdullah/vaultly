@@ -49,18 +49,17 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
     Future.microtask(_init);
   }
 
-  /// Reads the cooldown and the persisted "biometric enabled" flag while
-  /// probing the hardware — all at once, since the prompt waits on every one
-  /// of them — then auto-triggers the prompt once. Runs every time this
-  /// locked screen is created: cold start, inactivity lock, or returning to
-  /// a locked vault.
+  /// Waits on the cooldown, the persisted "biometric enabled" flag and the
+  /// hardware probe — started by the session at launch or lock, so usually
+  /// already resolved — then auto-triggers the prompt once. Runs every time
+  /// this locked screen is created: cold start, inactivity lock, or
+  /// returning to a locked vault.
   Future<void> _init() async {
-    final service = ref.read(biometricServiceProvider);
-    final cooldown = ref.read(masterAuthServiceProvider).cooldownRemaining();
-    final enabled = service.isEnabled();
-    final support = service.isSupported();
+    final launch = ref.read(sessionProvider.notifier).unlockPrerequisites();
+    final enabled = launch.biometricEnabled;
+    final support = launch.biometricSupported;
 
-    final remaining = await cooldown;
+    final remaining = await launch.cooldown;
     if (!mounted) return;
     if (remaining > Duration.zero) _startCooldown(remaining);
 

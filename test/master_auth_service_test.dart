@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:core_crypto/core_crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vaultkey/src/core/background_worker.dart';
 import 'package:vaultkey/src/core/storage_keys.dart';
 import 'package:vaultkey/src/features/auth/services/master_auth_service.dart';
 import 'package:vaultkey/src/features/vault/data/vault_repository.dart';
@@ -148,8 +149,11 @@ void main() {
   });
 
   group('change master password', () {
-    VaultRepository repo() =>
-        VaultRepository(fileStore: fileStore, cipher: const CipherService());
+    VaultRepository repo() => VaultRepository(
+          fileStore: fileStore,
+          cipher: const CipherService(),
+          worker: const IsolateWorker(),
+        );
 
     test('re-encrypts the vault: old key and old password stop working',
         () async {
@@ -228,6 +232,7 @@ void main() {
       await VaultRepository(
         fileStore: fileStore,
         cipher: const CipherService(),
+        worker: const IsolateWorker(),
       ).save([makeEntry(id: 'a')], setup.key, setup.salt);
       storage.store[VaultKeyKeys.backupPassphrase] = 'secret';
 
@@ -239,8 +244,11 @@ void main() {
   });
 
   group('recovery key', () {
-    VaultRepository repo() =>
-        VaultRepository(fileStore: fileStore, cipher: const CipherService());
+    VaultRepository repo() => VaultRepository(
+          fileStore: fileStore,
+          cipher: const CipherService(),
+          worker: const IsolateWorker(),
+        );
 
     test('stores only a wrap: neither the key nor the vault key', () async {
       final setup = await auth.setup(goodPassword);

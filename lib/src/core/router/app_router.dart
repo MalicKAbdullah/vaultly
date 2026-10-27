@@ -57,7 +57,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     ..listen(autofillRequestProvider, (_, __) => refresh.value++)
     ..listen(credentialRequestProvider, (_, __) => refresh.value++)
     // Re-route once the first-run flag loads or gets written.
-    ..listen(onboardingSeenProvider, (_, __) => refresh.value++)
+    ..listen(setupOnboardingSeenProvider, (_, __) => refresh.value++)
     ..listen(recoveryPromptProvider, (_, __) => refresh.value++);
 
   return GoRouter(

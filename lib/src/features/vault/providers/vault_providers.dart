@@ -30,18 +30,19 @@ final vaultBackupProducerProvider = Provider<BackupProducer>((ref) {
 final vaultEntriesProvider =
     AsyncNotifierProvider<VaultNotifier, List<VaultEntry>>(VaultNotifier.new);
 
-/// Loads and mutates the decrypted vault for the current session. Every
+/// Holds and mutates the decrypted vault for the current session. Every
 /// mutation is persisted (re-encrypted) immediately.
+///
+/// The session decrypts the vault before it reports unlocked, so [build]
+/// returns the entries synchronously and the first frame after an unlock
+/// already has them.
 class VaultNotifier extends AsyncNotifier<List<VaultEntry>> {
   @override
-  Future<List<VaultEntry>> build() async {
+  FutureOr<List<VaultEntry>> build() {
     final status = ref.watch(sessionProvider);
     if (status != AuthStatus.unlocked) return const [];
 
-    final session = ref.read(sessionProvider.notifier);
-    final entries =
-        await ref.read(vaultRepositoryProvider).load(session.vaultKey);
-
+    final entries = ref.read(sessionProvider.notifier).takeOpenedVault();
     // Scheduled auto-backup piggybacks on unlock; it never blocks loading.
     unawaited(
       ref.read(autoBackupControllerProvider.notifier).runIfDue(entries),
@@ -49,7 +50,9 @@ class VaultNotifier extends AsyncNotifier<List<VaultEntry>> {
     return entries;
   }
 
-  List<VaultEntry> get _current => state.valueOrNull ?? const [];
+  /// Mutations build on the loaded vault. A vault that failed to open has
+  /// no entries to build on, and saving over it would destroy it.
+  List<VaultEntry> get _current => state.requireValue;
 
   DateTime _now() => ref.read(clockProvider).now();
 
@@ -206,7 +209,7 @@ final filteredEntriesProvider = Provider<List<VaultEntry>>((ref) {
   final query = ref.watch(vaultQueryProvider);
 
   final needle = query.search.trim().toLowerCase();
-  var result = entries.where((e) {
+  final result = entries.where((e) {
     if (query.favoritesOnly && !e.favorite) return false;
     if (query.category != null && e.category != query.category) return false;
     if (needle.isEmpty) return true;
@@ -215,14 +218,59 @@ final filteredEntriesProvider = Provider<List<VaultEntry>>((ref) {
         e.url.toLowerCase().contains(needle);
   }).toList();
 
-  result = switch (query.sort) {
-    VaultSort.recent => result
-      ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt)),
-    VaultSort.alphabetical => result
-      ..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase())),
-  };
-  return result;
+  switch (query.sort) {
+    case VaultSort.recent:
+      return result..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    case VaultSort.alphabetical:
+      // Lower-case each title once, not once per comparison.
+      final keyed = [
+        for (final e in result) (key: e.title.toLowerCase(), entry: e),
+      ]..sort((a, b) => a.key.compareTo(b.key));
+      return [for (final k in keyed) k.entry];
+  }
 });
+
+/// Counts behind the filter chips and the overview, taken in one pass and
+/// recomputed only when the vault changes.
+final vaultTallyProvider = Provider<VaultTally>((ref) {
+  final entries = ref.watch(vaultEntriesProvider).valueOrNull ?? const [];
+  final byCategory = {for (final c in EntryCategory.values) c: 0};
+  var favorites = 0;
+  var withTotp = 0;
+  var withPassword = 0;
+  for (final e in entries) {
+    byCategory[e.category] = byCategory[e.category]! + 1;
+    if (e.favorite) favorites++;
+    if (e.totp != null) withTotp++;
+    if (e.password.isNotEmpty) withPassword++;
+  }
+  return VaultTally(
+    total: entries.length,
+    favorites: favorites,
+    withTotp: withTotp,
+    withPassword: withPassword,
+    byCategory: byCategory,
+  );
+});
+
+@immutable
+final class VaultTally {
+  const VaultTally({
+    required this.total,
+    required this.favorites,
+    required this.withTotp,
+    required this.withPassword,
+    required this.byCategory,
+  });
+
+  final int total;
+  final int favorites;
+  final int withTotp;
+  final int withPassword;
+
+  /// Every category, including those with no entries.
+  final Map<EntryCategory, int> byCategory;
+}
 
 /// Looks up one entry by id (detail screen).
 final entryByIdProvider = Provider.family<VaultEntry?, String>((ref, id) {

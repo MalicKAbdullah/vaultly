@@ -124,8 +124,11 @@ void main() {
         clock: clock,
       );
       final setup = await auth.setup(password);
-      await VaultRepository(fileStore: fileStore, cipher: cipher)
-          .save(entries, setup.key, setup.salt);
+      await VaultRepository(
+        fileStore: fileStore,
+        cipher: cipher,
+        worker: const InlineWorker(),
+      ).save(entries, setup.key, setup.salt);
 
       final bridge = FakeAutofillBridge(
         request: const AutofillFillRequest(domain: 'github.com'),
@@ -136,6 +139,7 @@ void main() {
           overrides: [
             secureStorageProvider.overrideWithValue(storage),
             fileStoreProvider.overrideWithValue(fileStore),
+            backgroundWorkerProvider.overrideWithValue(const InlineWorker()),
             keyDerivationProvider.overrideWithValue(kdf),
             clockProvider.overrideWithValue(clock),
             systemClipboardProvider.overrideWithValue(FakeClipboard()),

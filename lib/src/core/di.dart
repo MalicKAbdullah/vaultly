@@ -8,6 +8,7 @@ import 'package:core_update/core_update.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:vaultkey/src/core/app_info.dart';
+import 'package:vaultkey/src/core/background_worker.dart';
 import 'package:vaultkey/src/core/clock.dart';
 import 'package:vaultkey/src/core/interfaces/autofill_bridge.dart';
 import 'package:vaultkey/src/core/interfaces/biometric_key_vault.dart';
@@ -21,8 +22,8 @@ import 'package:vaultkey/src/features/notifications/vault_notifier.dart';
 import 'package:vaultkey/src/features/vault/data/vault_repository.dart';
 
 /// Composition root. Tests override the leaf providers (storage, file store,
-/// key derivation, clock, clipboard, backup folder, biometrics) with
-/// in-memory fakes — no platform channels.
+/// key derivation, clock, clipboard, backup folder, biometrics, background
+/// worker) with in-memory fakes — no platform channels.
 final clockProvider = Provider<Clock>((_) => const SystemClock());
 
 final secureStorageProvider = Provider<ISecureStorage>(
@@ -31,6 +32,10 @@ final secureStorageProvider = Provider<ISecureStorage>(
 
 final fileStoreProvider = Provider<IVaultFileStore>(
   (_) => const DocumentsVaultFileStore(),
+);
+
+final backgroundWorkerProvider = Provider<IBackgroundWorker>(
+  (_) => const IsolateWorker(),
 );
 
 final cipherServiceProvider = Provider<CipherService>(
@@ -91,6 +96,7 @@ final vaultRepositoryProvider = Provider<VaultRepository>(
   (ref) => VaultRepository(
     fileStore: ref.watch(fileStoreProvider),
     cipher: ref.watch(cipherServiceProvider),
+    worker: ref.watch(backgroundWorkerProvider),
   ),
 );
 
