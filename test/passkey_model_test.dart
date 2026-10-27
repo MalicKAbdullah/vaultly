@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:core_crypto/core_crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vaultkey/src/core/background_worker.dart';
 import 'package:vaultkey/src/features/backup/services/backup_codec.dart';
 import 'package:vaultkey/src/features/backup/services/csv_codec.dart';
 import 'package:vaultkey/src/features/passkeys/models/passkey_credential.dart';
@@ -79,6 +80,7 @@ void main() {
       final repo = VaultRepository(
         fileStore: store,
         cipher: const CipherService(),
+        worker: const IsolateWorker(),
       );
       const cipher = CipherService();
       final key = await FakeKeyDerivation()
