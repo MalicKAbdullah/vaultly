@@ -183,6 +183,8 @@ void main() {
     expect(c.read(vaultEntriesProvider).requireValue.map((e) => e.id), ['b']);
   });
 
+  // Creating, unwrapping and re-wrapping the recovery key are three real
+  // Argon2id derivations, slow on a shared CI runner.
   test('a recovery reset opens the vault re-encrypted under the new key',
       () async {
     final c = launch();
@@ -199,7 +201,7 @@ void main() {
     );
     expect(result, isA<UnlockSuccess>());
     expect(c.read(vaultEntriesProvider).requireValue, entries);
-  });
+  }, timeout: const Timeout(Duration(minutes: 2)));
 
   test('the unlock prerequisites started at launch are handed over once',
       () async {
