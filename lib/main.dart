@@ -5,11 +5,12 @@ import 'package:core_theme/core_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vaultkey/src/app.dart';
+import 'package:vaultkey/src/core/appearance_provider.dart';
 import 'package:vaultkey/src/core/di.dart';
 import 'package:vaultkey/src/core/startup_timeline.dart';
 import 'package:vaultkey/src/features/notifications/vault_notifier.dart';
 
-void main() {
+Future<void> main() async {
   StartupTimeline.start();
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -20,9 +21,14 @@ void main() {
     accentColor: AppAccents.vaultly.light,
   );
 
+  final appearance = await AppearanceController.load();
+
   runApp(
     ProviderScope(
-      overrides: [notifyProvider.overrideWithValue(notify)],
+      overrides: [
+        notifyProvider.overrideWithValue(notify),
+        appearanceProvider.overrideWithValue(appearance),
+      ],
       child: const VaultKeyApp(),
     ),
   );

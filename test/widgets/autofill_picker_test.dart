@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vaultkey/src/core/di.dart';
 import 'package:vaultkey/src/core/interfaces/autofill_bridge.dart';
 import 'package:vaultkey/src/core/router/app_router.dart';
+import 'package:vaultkey/src/features/auth/screens/unlock_screen.dart';
 import 'package:vaultkey/src/features/auth/services/master_auth_service.dart';
 import 'package:vaultkey/src/features/autofill/screens/autofill_picker_screen.dart';
 import 'package:vaultkey/src/features/vault/data/vault_repository.dart';
@@ -158,8 +159,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Locked first: the vault never opens without the master password.
-      expect(
-          find.text('Enter your master password to unlock.'), findsOneWidget);
+      expect(find.byType(UnlockScreen), findsOneWidget);
 
       await tester.enterText(find.byType(TextField).first, password);
       await tester.tap(find.text('Unlock'));

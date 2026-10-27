@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:core_crypto/core_crypto.dart';
+import 'package:core_lock/core_lock.dart';
 import 'package:core_theme/core_theme.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
@@ -20,16 +21,16 @@ class UnlockScreen extends ConsumerStatefulWidget {
 
 class _UnlockScreenState extends ConsumerState<UnlockScreen> {
   final _passwordController = TextEditingController();
-  bool _obscure = true;
+  final _passwordFocus = FocusNode();
   bool _busy = false;
   bool _recovering = false;
   String? _error;
+  int _failures = 0;
   Duration _cooldown = Duration.zero;
   Timer? _countdown;
 
-  /// Persisted flag — the single source of truth for whether to show the
-  /// biometric button. Resolved from storage (no hardware probe) so the
-  /// button appears immediately when biometric unlock is switched on.
+  /// Persisted flag, resolved from storage (no hardware probe) so the
+  /// fingerprint button appears as soon as the screen does.
   bool _biometricEnabled = false;
 
   /// Whether the device can actually run a biometric prompt right now.
@@ -66,7 +67,10 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
     final isEnabled = await enabled;
     if (!mounted) return;
     setState(() => _biometricEnabled = isEnabled);
-    if (!isEnabled) return;
+    if (!isEnabled) {
+      _passwordFocus.requestFocus();
+      return;
+    }
 
     final supported = await support;
     if (!mounted) return;
@@ -74,12 +78,15 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
       _biometricSupported = supported;
       _supportProbed = true;
     });
+    if (!supported) {
+      _passwordFocus.requestFocus();
+      return;
+    }
 
-    // Auto-trigger deterministically, but only when the hardware is usable
-    // and we are not in a lockout cooldown.
-    if (supported && !_autoPromptFired && _cooldown == Duration.zero) {
+    // Auto-trigger deterministically, but not during a lockout cooldown.
+    if (!_autoPromptFired && _cooldown == Duration.zero) {
       _autoPromptFired = true;
-      await _biometricUnlock(auto: true);
+      await _biometricUnlock();
     }
   }
 
@@ -87,6 +94,7 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
   void dispose() {
     _countdown?.cancel();
     _passwordController.dispose();
+    _passwordFocus.dispose();
     super.dispose();
   }
 
@@ -114,7 +122,10 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
       case UnlockSuccess():
         _passwordController.clear();
       case UnlockWrongPassword(:final cooldown):
-        setState(() => _error = 'That password is not right.');
+        setState(() {
+          _error = 'That password is not right.';
+          _failures++;
+        });
         if (cooldown != null) _startCooldown(cooldown);
       case UnlockCoolingDown(:final remaining):
         _startCooldown(remaining);
@@ -122,380 +133,90 @@ class _UnlockScreenState extends ConsumerState<UnlockScreen> {
     setState(() => _busy = false);
   }
 
-  /// Runs the biometric prompt. [auto] marks the once-per-lock automatic
-  /// trigger, which stays quiet on cancel/failure; a manual tap surfaces a
-  /// hint pointing at the master-password fallback.
-  Future<void> _biometricUnlock({bool auto = false}) async {
+  /// Runs the biometric prompt. A cancelled or failed prompt leaves the
+  /// screen as it is: the system prompt gives its own feedback, and the
+  /// master password stays ready underneath.
+  Future<void> _biometricUnlock() async {
     if (_biometricBusy || _cooldown > Duration.zero) return;
     setState(() => _biometricBusy = true);
-    final ok = await ref.read(sessionProvider.notifier).unlockWithBiometrics();
+    await ref.read(sessionProvider.notifier).unlockWithBiometrics();
     if (!mounted) return;
-    setState(() {
-      _biometricBusy = false;
-      if (!ok && !auto) {
-        _error = 'Biometric unlock didn\'t work. Use your master password.';
-      }
-    });
+    setState(() => _biometricBusy = false);
   }
 
-  String get _cooldownLabel {
-    final m = _cooldown.inMinutes;
-    final s = _cooldown.inSeconds % 60;
-    final time =
-        m > 0 ? '$m min ${s.toString().padLeft(2, '0')} sec' : '$s sec';
-    return 'Too many attempts. Try again in $time.';
-  }
-
-  static const _days = [
-    'Monday',
-    'Tuesday',
-    'Wednesday',
-    'Thursday',
-    'Friday',
-    'Saturday',
-    'Sunday',
-  ];
-  static const _months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-
-  static String _greeting(int hour) => switch (hour) {
-        < 5 => 'Good night',
-        < 12 => 'Good morning',
-        < 17 => 'Good afternoon',
-        < 22 => 'Good evening',
-        _ => 'Good night',
-      };
+  String get _cooldownLabel =>
+      'Too many attempts. Try again in ${formatLockCountdown(_cooldown)}.';
 
   @override
   Widget build(BuildContext context) {
-    final c = SuiteColors.of(context);
-    // Persisted flag is the source of truth: once enabled the button is
-    // always shown, never hidden behind the async hardware probe.
-    final showBiometric = _biometricEnabled;
-    final biometricUnavailable = _supportProbed && !_biometricSupported;
+    // Shown from the persisted flag at once; hidden only when the hardware
+    // probe reports the prompt cannot run on this device right now.
+    final showBiometric =
+        _biometricEnabled && !(_supportProbed && !_biometricSupported);
     final coolingDown = _cooldown > Duration.zero;
 
-    return Scaffold(
-      backgroundColor: c.background,
-      body: Stack(
-        children: [
-          // The family mark, oversized and near-invisible, gives the screen
-          // texture without showing anything from inside the vault.
-          Positioned(
-            right: -150,
-            top: 72,
-            child: ExcludeSemantics(
-              child: SuiteMark(
-                size: 460,
-                color: c.accent.withValues(alpha: 0.04),
-                accentColor: c.accent.withValues(alpha: 0.08),
-                variant: SuiteMarkVariant.accent,
-              ),
-            ),
+    final List<Widget> controls;
+    if (_recovering) {
+      controls = [
+        _RecoveryForm(
+          coolingDown: coolingDown,
+          cooldownLabel: _cooldownLabel,
+          onCooldown: _startCooldown,
+          onBack: () => setState(() => _recovering = false),
+        ),
+      ];
+    } else {
+      controls = [
+        LockShake(
+          trigger: _failures,
+          child: AppTextField(
+            label: 'Master password',
+            controller: _passwordController,
+            focusNode: _passwordFocus,
+            obscureText: true,
+            errorText: coolingDown ? _cooldownLabel : _error,
+            textInputAction: TextInputAction.go,
+            autofillHints: const [AutofillHints.password],
+            onChanged: (_) {
+              if (_error != null) setState(() => _error = null);
+            },
+            onSubmitted: (_) => _unlock(),
           ),
-          SafeArea(
-            child: Center(
-              child: ConstrainedBox(
-                // Width is bounded outside IntrinsicHeight so the column is
-                // measured at the width it is laid out at.
-                constraints: const BoxConstraints(maxWidth: 468),
-                child: LayoutBuilder(
-                  builder: (context, box) => SingleChildScrollView(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(minHeight: box.maxHeight),
-                      child: IntrinsicHeight(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const SizedBox(height: AppSpacing.lg),
-                            Row(
-                              children: [
-                                const SuiteAppIcon(
-                                  app: SuiteApp.vaultly,
-                                  size: 40,
-                                ),
-                                const SizedBox(width: AppSpacing.smd),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Vaultly',
-                                        style: AppTextStyles.h4.copyWith(
-                                          color: c.textPrimary,
-                                        ),
-                                      ),
-                                      Text(
-                                        _recovering
-                                            ? 'Reset your master password.'
-                                            : 'Enter your master password to unlock.',
-                                        style: AppTextStyles.bodySmall.copyWith(
-                                          color: c.textSecondary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Icon(
-                                  Icons.lock_outline_rounded,
-                                  size: 18,
-                                  color: c.textTertiary,
-                                ),
-                              ],
-                            ),
-                            if (_recovering) ...[
-                              const SizedBox(height: AppSpacing.xl),
-                              _RecoveryForm(
-                                coolingDown: coolingDown,
-                                cooldownLabel: _cooldownLabel,
-                                onCooldown: _startCooldown,
-                                onBack: () =>
-                                    setState(() => _recovering = false),
-                              ),
-                              const Spacer(),
-                            ] else ...[
-                              const Spacer(flex: 2),
-                              const _LockClock(),
-                              if (showBiometric) ...[
-                                const SizedBox(height: AppSpacing.xxl),
-                                _BiometricTarget(
-                                  busy: _biometricBusy,
-                                  onPressed: (coolingDown ||
-                                          biometricUnavailable ||
-                                          _biometricBusy)
-                                      ? null
-                                      : () => _biometricUnlock(),
-                                ),
-                                if (biometricUnavailable) ...[
-                                  const SizedBox(height: AppSpacing.sm),
-                                  Text(
-                                    'Biometric hardware is not available right '
-                                    'now. Enter your master password instead.',
-                                    style: AppTextStyles.caption.copyWith(
-                                      color: c.textSecondary,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ],
-                              ],
-                              const Spacer(flex: 2),
-                              if (coolingDown) ...[
-                                AppBanner(
-                                  title: _cooldownLabel,
-                                  kind: BannerKind.warning,
-                                  icon: Icons.timer_outlined,
-                                ),
-                                const SizedBox(height: AppSpacing.smd),
-                              ],
-                              AppTextField(
-                                label: 'Master password',
-                                controller: _passwordController,
-                                obscureText: _obscure,
-                                autofocus: !showBiometric,
-                                errorText: _error,
-                                textInputAction: TextInputAction.go,
-                                autofillHints: const [AutofillHints.password],
-                                onChanged: (_) {
-                                  if (_error != null) {
-                                    setState(() => _error = null);
-                                  }
-                                },
-                                onSubmitted: (_) => _unlock(),
-                                suffixIcon: IconButton(
-                                  tooltip: _obscure ? 'Show' : 'Hide',
-                                  icon: Icon(
-                                    _obscure
-                                        ? Icons.visibility_outlined
-                                        : Icons.visibility_off_outlined,
-                                    size: 20,
-                                  ),
-                                  onPressed: () =>
-                                      setState(() => _obscure = !_obscure),
-                                ),
-                              ),
-                              const SizedBox(height: AppSpacing.smd),
-                              VaultButton(
-                                label: 'Unlock',
-                                isLoading: _busy,
-                                onPressed: coolingDown ? null : _unlock,
-                              ),
-                              const SizedBox(height: AppSpacing.xs),
-                              TextButton(
-                                onPressed: _busy
-                                    ? null
-                                    : () => setState(() {
-                                          _error = null;
-                                          _recovering = true;
-                                        }),
-                                child: Text(
-                                  'Forgot password?',
-                                  style: AppTextStyles.label.copyWith(
-                                    color: c.textSecondary,
-                                  ),
-                                ),
-                              ),
-                            ],
-                            const SizedBox(height: AppSpacing.md),
-                            const Center(child: SuiteEndorsement()),
-                            const SizedBox(height: AppSpacing.md),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
+        ),
+        const SizedBox(height: LockLayout.gap),
+        VaultButton(
+          label: 'Unlock',
+          isLoading: _busy,
+          onPressed: coolingDown ? null : _unlock,
+        ),
+        // Hidden while typing so the keyboard edge never cuts it in half on
+        // small phones; it returns when the keyboard closes.
+        if (MediaQuery.viewInsetsOf(context).bottom == 0) ...[
+          const SizedBox(height: AppSpacing.sm),
+          LockTextLink(
+            label: 'Forgot password?',
+            onPressed: _busy
+                ? null
+                : () => setState(() {
+                      _error = null;
+                      _recovering = true;
+                    }),
           ),
         ],
-      ),
-    );
-  }
-}
+      ];
+    }
 
-/// The large clock, greeting and date, re-rendered on each minute boundary.
-class _LockClock extends ConsumerStatefulWidget {
-  const _LockClock();
-
-  @override
-  ConsumerState<_LockClock> createState() => _LockClockState();
-}
-
-class _LockClockState extends ConsumerState<_LockClock> {
-  Timer? _tick;
-  late DateTime _now = ref.read(clockProvider).now();
-
-  @override
-  void initState() {
-    super.initState();
-    _schedule();
-  }
-
-  void _schedule() {
-    final next = DateTime(
-      _now.year,
-      _now.month,
-      _now.day,
-      _now.hour,
-      _now.minute,
-    ).add(const Duration(minutes: 1));
-    _tick = Timer(next.difference(_now), () {
-      if (!mounted) return;
-      setState(() => _now = ref.read(clockProvider).now());
-      _schedule();
-    });
-  }
-
-  @override
-  void dispose() {
-    _tick?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = SuiteColors.of(context);
-    final use24h = MediaQuery.maybeAlwaysUse24HourFormatOf(context) ?? false;
-    final hour =
-        use24h ? _now.hour : (_now.hour % 12 == 0 ? 12 : _now.hour % 12);
-    final time = '${use24h ? hour.toString().padLeft(2, '0') : hour}:'
-        '${_now.minute.toString().padLeft(2, '0')}';
-    final date = '${_UnlockScreenState._days[_now.weekday - 1]}, '
-        '${_now.day} ${_UnlockScreenState._months[_now.month - 1]}';
-    return Column(
-      children: [
-        Text(
-          time,
-          style: AppTextStyles.heroXL.copyWith(
-            fontSize: 88,
-            letterSpacing: -4,
-            fontWeight: FontWeight.w400,
-            color: c.textPrimary,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Text(
-          '${_UnlockScreenState._greeting(_now.hour)} · $date',
-          style: AppTextStyles.label.copyWith(color: c.textSecondary),
-        ),
-      ],
-    );
-  }
-}
-
-/// The biometric unlock: a large fingerprint target on a soft accent disc
-/// in a hairline ring, with its label underneath.
-class _BiometricTarget extends StatelessWidget {
-  const _BiometricTarget({required this.busy, required this.onPressed});
-
-  final bool busy;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = SuiteColors.of(context);
-    final enabled = onPressed != null;
-    return Semantics(
-      button: true,
-      enabled: enabled,
-      label: 'Unlock with biometrics',
-      excludeSemantics: true,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onPressed,
-        child: Column(
-          children: [
-            Container(
-              width: 112,
-              height: 112,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: busy ? c.accent : c.border),
-              ),
-              child: AnimatedOpacity(
-                duration: AppMotion.fast,
-                opacity: enabled || busy ? 1 : 0.45,
-                child: Container(
-                  width: 88,
-                  height: 88,
-                  decoration: BoxDecoration(
-                    color: c.accentContainer,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.fingerprint_rounded,
-                    size: 44,
-                    color: c.accent,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.smd),
-            Text(
-              'Unlock with biometrics',
-              style: AppTextStyles.labelStrong.copyWith(
-                color: enabled ? c.textPrimary : c.textTertiary,
-              ),
-            ),
-          ],
-        ),
-      ),
+    return LockLayout(
+      mark: const SuiteAppIcon(app: SuiteApp.vaultly, size: 64),
+      title: 'Vaultly',
+      message: _recovering ? 'Reset your master password' : null,
+      bottom: showBiometric
+          ? LockBiometricButton(
+              onPressed:
+                  (coolingDown || _biometricBusy) ? null : _biometricUnlock,
+            )
+          : null,
+      children: controls,
     );
   }
 }
@@ -528,6 +249,8 @@ class _RecoveryFormState extends ConsumerState<_RecoveryForm> {
   bool _busy = false;
   String? _keyError;
   String? _passwordError;
+  int _keyFailures = 0;
+  int _passwordFailures = 0;
 
   @override
   void dispose() {
@@ -540,17 +263,26 @@ class _RecoveryFormState extends ConsumerState<_RecoveryForm> {
   Future<void> _submit() async {
     if (_busy || widget.coolingDown) return;
     if (RecoveryKey.normalize(_key.text) == null) {
-      setState(() => _keyError = 'A recovery key has ${RecoveryKey.length} '
-          'letters and numbers, like XXXX-XXXX-…');
+      setState(() {
+        _keyError = 'A recovery key has ${RecoveryKey.length} '
+            'letters and numbers, like XXXX-XXXX-…';
+        _keyFailures++;
+      });
       return;
     }
     if (_password.text.length < MasterAuthService.minPasswordLength) {
-      setState(() => _passwordError = 'Use at least '
-          '${MasterAuthService.minPasswordLength} characters.');
+      setState(() {
+        _passwordError = 'Use at least '
+            '${MasterAuthService.minPasswordLength} characters.';
+        _passwordFailures++;
+      });
       return;
     }
     if (_password.text != _confirm.text) {
-      setState(() => _passwordError = 'The passwords do not match.');
+      setState(() {
+        _passwordError = 'The passwords do not match.';
+        _passwordFailures++;
+      });
       return;
     }
     setState(() {
@@ -568,7 +300,10 @@ class _RecoveryFormState extends ConsumerState<_RecoveryForm> {
       case UnlockSuccess():
         break;
       case UnlockWrongPassword(:final cooldown):
-        setState(() => _keyError = 'That recovery key is not right.');
+        setState(() {
+          _keyError = 'That recovery key is not right.';
+          _keyFailures++;
+        });
         if (cooldown != null) widget.onCooldown(cooldown);
       case UnlockCoolingDown(:final remaining):
         widget.onCooldown(remaining);
@@ -579,13 +314,6 @@ class _RecoveryFormState extends ConsumerState<_RecoveryForm> {
   @override
   Widget build(BuildContext context) {
     final c = SuiteColors.of(context);
-    final back = TextButton(
-      onPressed: _busy ? null : widget.onBack,
-      child: Text(
-        'Back to master password',
-        style: AppTextStyles.label.copyWith(color: c.textSecondary),
-      ),
-    );
     return FutureBuilder<bool>(
       future: _hasKey,
       builder: (context, snapshot) {
@@ -595,11 +323,6 @@ class _RecoveryFormState extends ConsumerState<_RecoveryForm> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Reset your master password',
-              style: AppTextStyles.h3.copyWith(color: c.textPrimary),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
               hasKey
                   ? 'Enter the recovery key you saved, then choose a new '
                       'master password. Your vault stays as it is.'
@@ -607,28 +330,27 @@ class _RecoveryFormState extends ConsumerState<_RecoveryForm> {
                       'forgotten master password cannot be reset. If '
                       'biometric unlock works, use it, then create a recovery '
                       'key in Settings.',
+              textAlign: TextAlign.center,
               style: AppTextStyles.bodySmall.copyWith(color: c.textSecondary),
             ),
             if (hasKey) ...[
               const SizedBox(height: AppSpacing.lg),
-              if (widget.coolingDown) ...[
-                AppBanner(
-                  title: widget.cooldownLabel,
-                  kind: BannerKind.warning,
-                  icon: Icons.timer_outlined,
+              LockShake(
+                trigger: _keyFailures,
+                child: AppTextField(
+                  label: 'Recovery key',
+                  controller: _key,
+                  hint: 'XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX',
+                  monospace: true,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  textCapitalization: TextCapitalization.characters,
+                  errorText: _keyError,
+                  textInputAction: TextInputAction.next,
+                  onChanged: (_) => setState(() => _keyError = null),
                 ),
-                const SizedBox(height: AppSpacing.smd),
-              ],
-              AppTextField(
-                label: 'Recovery key',
-                controller: _key,
-                hint: 'XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX',
-                monospace: true,
-                errorText: _keyError,
-                textInputAction: TextInputAction.next,
-                onChanged: (_) => setState(() => _keyError = null),
               ),
-              const SizedBox(height: AppSpacing.smd),
+              const SizedBox(height: LockLayout.gap),
               AppTextField(
                 label: 'New master password',
                 controller: _password,
@@ -638,25 +360,33 @@ class _RecoveryFormState extends ConsumerState<_RecoveryForm> {
                 textInputAction: TextInputAction.next,
                 onChanged: (_) => setState(() => _passwordError = null),
               ),
-              const SizedBox(height: AppSpacing.smd),
-              AppTextField(
-                label: 'Confirm new master password',
-                controller: _confirm,
-                obscureText: true,
-                errorText: _passwordError,
-                textInputAction: TextInputAction.go,
-                onChanged: (_) => setState(() => _passwordError = null),
-                onSubmitted: (_) => _submit(),
+              const SizedBox(height: LockLayout.gap),
+              LockShake(
+                trigger: _passwordFailures,
+                child: AppTextField(
+                  label: 'Confirm new master password',
+                  controller: _confirm,
+                  obscureText: true,
+                  errorText: widget.coolingDown
+                      ? widget.cooldownLabel
+                      : _passwordError,
+                  textInputAction: TextInputAction.go,
+                  onChanged: (_) => setState(() => _passwordError = null),
+                  onSubmitted: (_) => _submit(),
+                ),
               ),
-              const SizedBox(height: AppSpacing.smd),
+              const SizedBox(height: LockLayout.gap),
               VaultButton(
-                label: 'Reset password and unlock',
+                label: 'Reset and unlock',
                 isLoading: _busy,
                 onPressed: widget.coolingDown ? null : _submit,
               ),
             ],
-            const SizedBox(height: AppSpacing.xs),
-            back,
+            const SizedBox(height: AppSpacing.sm),
+            LockTextLink(
+              label: 'Back to unlock',
+              onPressed: _busy ? null : widget.onBack,
+            ),
           ],
         );
       },

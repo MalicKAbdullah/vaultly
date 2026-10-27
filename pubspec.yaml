@@ -90,6 +90,8 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^3.0.0
   fake_async: ^1.3.1
+  # Mocks the appearance preference in widget tests
+  shared_preferences: ^2.5.3
   flutter_launcher_icons: ^0.14.1
   flutter_native_splash: ^2.4.4
 
