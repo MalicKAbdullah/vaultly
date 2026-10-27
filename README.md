@@ -15,7 +15,7 @@ Master-password + biometric unlock, one-tap autofill, and 2FA codes — all offl
 </div>
 
 > ### 🔒 Private by design
-> Vaultly works **completely offline**. Your passwords are **encrypted on your device and never leave it** — no account, no cloud, no servers, no tracking. You hold the only key.
+> Vaultly works **completely offline**. Your passwords are **encrypted on your device and never leave your own devices** — no account, no cloud, no servers, no tracking. You hold the only key.
 
 Most password managers ask you to trust their servers with your entire digital life. Vaultly doesn't have servers. Everything stays on your phone, encrypted, and you decide if and where your backups go — including your own cloud folder.
 
@@ -40,6 +40,10 @@ Most password managers ask you to trust their servers with your entire digital l
 **Never lose access**
 - **Encrypted backup & restore** you can export anywhere
 - **Scheduled auto-backup** to any folder — including a Google Drive folder, so you can restore on a new phone
+
+**Move in, stay in step**
+- **Import** from Chrome / Google Password Manager, Bitwarden (JSON or CSV), 1Password (.1pux or CSV), any CSV (you match the columns), and **Google Authenticator** transfer QR codes — with a preview that finds duplicates and lets you skip, merge, or keep both
+- **Phone-to-phone sync** over your own Wi-Fi: pair once with a QR code, then both devices merge their changes directly — no server, end-to-end encrypted
 
 ## 🔓 Autofill: what works where
 
@@ -111,9 +115,37 @@ multi-label public suffix (such as `co.uk`) is not rejected. Digital Asset Links
 Manager is not offered. On Android 13 and older, the Autofill Service above keeps
 filling passwords; passkeys need Android 14.
 
+## 🔄 Sync: how it works
+
+1. **Pair once.** One device shows a QR code holding a one-time secret and its
+   X25519 public key; the other scans it. Both derive a shared key with
+   X25519 + HKDF-SHA256, prove it to each other, and show the same 6-digit code
+   for you to compare before anything is saved.
+2. **Sync.** Open *Settings → Sync devices* on both devices, unlocked, on the
+   same Wi-Fi. They find each other over mDNS (`_vaultly._tcp`), connect over
+   TCP, and run a handshake with fresh ephemeral keys bound to the paired key.
+   Every frame is ChaCha20-Poly1305 encrypted with a counter nonce, so altered,
+   replayed or reordered data is rejected. Only ciphertext crosses the network.
+3. **Merge.** Each item keeps its newest version (by last edit); deletions
+   travel as tombstones. When both devices changed the same item, the newest
+   wins and the other version's password is kept in password history.
+
+**Verified by tests:** the merge rules, the handshake and encryption
+(round-trip, wrong key, tampering, replay), pairing key agreement and SAS, and
+a real loopback TCP session. **Needs two real devices to verify:** mDNS
+discovery on actual Wi-Fi (including networks with client isolation or
+multicast filtering), camera scanning of the pairing code, the iOS
+local-network permission prompt, and timing when both devices discover each
+other at once.
+
+**Limits:** both devices must be open on the Sync screen at the same time;
+item times are stored in local time, so devices should share a time zone;
+imported export files and decrypted data live only in memory, but Dart cannot
+guarantee every copy of a string is wiped.
+
 ## 🔒 Privacy & Security
 
-- **Offline-first.** The only network use is the optional update check and, when an Android *app* (not a website) asks for a passkey, downloading that site's public Digital Asset Links file to confirm the app belongs to it.
+- **Offline-first.** The network is used only for the optional update check; when an Android *app* (not a website) asks for a passkey, to download that site's public Digital Asset Links file; and, when you sync, for the encrypted link between your own paired devices on your Wi-Fi.
 - **Unlocked by you.** Your data key is derived from your master password with **Argon2id** (brute-force-resistant), held only in memory while unlocked and wiped on lock.
 - **Encrypted at rest.** The vault is stored as a single file encrypted with **AES-256-GCM**.
 - **Your backups, your key.** Backups are encrypted with a separate passphrase — a backup file alone is useless to anyone else.

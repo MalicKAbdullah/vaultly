@@ -7,6 +7,7 @@ import 'package:core_storage/core_storage.dart';
 import 'package:core_update/core_update.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:uuid/uuid.dart';
 import 'package:vaultkey/src/core/app_info.dart';
 import 'package:vaultkey/src/core/background_worker.dart';
 import 'package:vaultkey/src/core/clock.dart';
@@ -19,6 +20,7 @@ import 'package:vaultkey/src/features/auth/services/biometric_service.dart';
 import 'package:vaultkey/src/features/auth/services/master_auth_service.dart';
 import 'package:vaultkey/src/features/backup/services/backup_codec.dart';
 import 'package:vaultkey/src/features/notifications/vault_notifier.dart';
+import 'package:vaultkey/src/features/sync/services/sync_ledger.dart';
 import 'package:vaultkey/src/features/vault/data/vault_repository.dart';
 
 /// Composition root. Tests override the leaf providers (storage, file store,
@@ -97,6 +99,15 @@ final vaultRepositoryProvider = Provider<VaultRepository>(
     fileStore: ref.watch(fileStoreProvider),
     cipher: ref.watch(cipherServiceProvider),
     worker: ref.watch(backgroundWorkerProvider),
+  ),
+);
+
+/// Device identity, pairings and deletion tombstones for device sync.
+final syncLedgerProvider = Provider<SyncLedger>(
+  (ref) => SyncLedger(
+    storage: ref.watch(secureStorageProvider),
+    newDeviceId: const Uuid().v4,
+    defaultDeviceName: Platform.isIOS ? 'iPhone' : 'Android',
   ),
 );
 

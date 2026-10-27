@@ -241,8 +241,15 @@ class SettingsScreen extends ConsumerWidget {
                       SettingsTile(
                         icon: Icons.download_rounded,
                         title: 'Import',
-                        subtitle: 'Restore a backup or a CSV',
+                        subtitle: 'A backup, another password manager, '
+                            'or Google Authenticator',
                         onTap: () => context.push(AppRoutes.import),
+                      ),
+                      SettingsTile(
+                        icon: Icons.sync_rounded,
+                        title: 'Sync devices',
+                        subtitle: 'Keep your phones in step over Wi-Fi',
+                        onTap: () => context.push(AppRoutes.sync),
                       ),
                     ],
                   ),
@@ -323,9 +330,10 @@ class _About extends ConsumerWidget {
         ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 320),
           child: Text(
-            'Your passwords are stored only on this device, protected '
-            'by encryption. The only network use is the optional update '
-            'check.',
+            'Your passwords are stored only on your devices, protected '
+            'by encryption. Network use is limited to the optional update '
+            'check and, when you sync, the encrypted link between your '
+            'paired devices on the same Wi-Fi.',
             textAlign: TextAlign.center,
             style: AppTextStyles.bodySmall.copyWith(color: c.textSecondary),
           ),

@@ -131,13 +131,18 @@ class VaultNotifier extends AsyncNotifier<List<VaultEntry>> {
     await commit(_current.where((e) => e.id != id).toList());
   }
 
-  /// Replaces the whole vault (backup import).
+  /// Replaces the whole vault (backup restore, imports, device sync).
   Future<void> replaceAll(List<VaultEntry> entries) => commit(entries);
 
-  /// Persists [entries] and publishes them as the new state.
+  /// Persists [entries] and publishes them as the new state. Items that
+  /// disappear get a sync tombstone first, so a crash between the two
+  /// writes can only delete on the next sync, never resurrect.
   @protected
   @visibleForOverriding
   Future<void> commit(List<VaultEntry> entries) async {
+    await ref
+        .read(syncLedgerProvider)
+        .trackWrite(before: _current, after: entries, at: _now());
     final session = ref.read(sessionProvider.notifier);
     await ref
         .read(vaultRepositoryProvider)

@@ -1,8 +1,8 @@
 import 'dart:typed_data';
 
-/// RFC 4648 base32 decoding, tolerant of the messy secrets users actually
-/// paste: lowercase letters, spaces/dashes between groups, and missing
-/// `=` padding are all accepted.
+/// RFC 4648 base32. Decoding is tolerant of the messy secrets users
+/// actually paste: lowercase letters, spaces/dashes between groups, and
+/// missing `=` padding are all accepted.
 abstract final class Base32 {
   static const String _alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 
@@ -41,5 +41,23 @@ abstract final class Base32 {
       }
     }
     return Uint8List.fromList(bytes);
+  }
+
+  /// Encodes [bytes] as unpadded uppercase base32.
+  static String encode(List<int> bytes) {
+    final out = StringBuffer();
+    var buffer = 0;
+    var bitsLeft = 0;
+    for (final byte in bytes) {
+      buffer = (buffer << 8) | (byte & 0xFF);
+      bitsLeft += 8;
+      while (bitsLeft >= 5) {
+        bitsLeft -= 5;
+        out.write(_alphabet[(buffer >> bitsLeft) & 0x1F]);
+      }
+      buffer &= (1 << bitsLeft) - 1;
+    }
+    if (bitsLeft > 0) out.write(_alphabet[(buffer << (5 - bitsLeft)) & 0x1F]);
+    return out.toString();
   }
 }
