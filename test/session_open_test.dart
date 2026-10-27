@@ -187,18 +187,26 @@ void main() {
   // Argon2id derivations, slow on a shared CI runner.
   test('a recovery reset opens the vault re-encrypted under the new key',
       () async {
+    final clock = Stopwatch()..start();
+    void step(String what) =>
+        printOnFailure('${clock.elapsedMilliseconds} ms: $what');
     final c = launch();
     await settle();
+    step('locked');
     await session(c).unlock(password);
+    step('unlocked');
     final recovery = await session(c).createRecoveryKey();
+    step('recovery key created');
     c.listen(vaultEntriesProvider, (_, __) {});
     session(c).lock();
     await settle();
+    step('locked again');
 
     final result = await session(c).resetWithRecoveryKey(
       recoveryKey: recovery,
       newPassword: 'a brand new password',
     );
+    step('reset returned $result');
     expect(result, isA<UnlockSuccess>());
     expect(c.read(vaultEntriesProvider).requireValue, entries);
   }, timeout: const Timeout(Duration(minutes: 2)));
