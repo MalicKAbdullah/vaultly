@@ -22,10 +22,14 @@ secure-suite-core's `docs/PERFORMANCE.md`.
    biometric key (or the password's Argon2id derivation).
 3. **While the prompt is up.** The encrypted vault file is already in
    memory as an `EncryptedPayload` (ciphertext plus its non-secret header).
-   The session keeps it read ahead whenever it is locked: at launch, on
-   every lock, after an erase and after a recovery reset (which re-encrypts
-   the file). A read waits for any save still in flight, so a lock in the
-   middle of an edit never reads the older file.
+   The session reads it ahead at launch and on every lock. Every component
+   that touches the file (vault saves, the master-password and recovery
+   re-key, erase) goes through one `VaultFile`: reads, writes and deletes
+   run in one queue, and a generation counts the writes queued. A save
+   takes its place in the queue before it starts encrypting, so a lock in
+   the middle of an edit reads the saved file. A read-ahead that a later
+   write made stale (a recovery reset re-keys the file while locked) is
+   read again before it is opened.
 4. **Key released → vault open.** One worker-isolate task decrypts,
    `jsonDecode`s and builds every `VaultEntry`. Only then does the session
    report `unlocked`, so `VaultNotifier.build` returns the entries
@@ -85,7 +89,7 @@ isolate, so about 1 ms is its floor.
 | Whole `VaultListScreen` (now) | 22.3 ms | — |
 
 The frame rows are the median of 7 runs on an otherwise idle machine; the
-committed test pumps each frame 3 times to stay light on CI. Repeat runs
+committed test pumps each frame once to stay light on CI. Repeat runs
 on a busy machine measured 2.2–3.1 s eager against 52–90 ms lazy.
 
 The overview also estimated every password's strength on each build of the
