@@ -28,6 +28,9 @@ import 'vault_fixture.dart';
 void main() {
   const size = 1000;
   const runs = 7;
+  // An eager 1,000-row frame costs seconds on a CI runner; three keep the
+  // suite's other CPU-heavy tests (Argon2id) inside their timeouts.
+  const frameRuns = 3;
   final entries = realisticVault(size);
   final now = DateTime(2026, 10, 20);
 
@@ -159,7 +162,7 @@ void main() {
       Widget Function() build,
     ) async {
       final times = <int>[];
-      for (var i = 0; i < runs; i++) {
+      for (var i = 0; i < frameRuns; i++) {
         await tester.pumpWidget(const SizedBox());
         final sw = Stopwatch()..start();
         await tester.pumpWidget(build());

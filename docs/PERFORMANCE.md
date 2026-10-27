@@ -84,6 +84,10 @@ isolate, so about 1 ms is its floor.
 | Lazy `SliverRowGroup` (now) | 39.6 ms | 13 |
 | Whole `VaultListScreen` (now) | 22.3 ms | — |
 
+The frame rows are the median of 7 runs on an otherwise idle machine; the
+committed test pumps each frame 3 times to stay light on CI. Repeat runs
+on a busy machine measured 2.2–3.1 s eager against 52–90 ms lazy.
+
 The overview also estimated every password's strength on each build of the
 vault tab (2.3 ms per build at 1,000 items); it now reads the strong count
 from the health report.
