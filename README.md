@@ -24,6 +24,7 @@ Most password managers ask you to trust their servers with your entire digital l
 **Unlock & fill**
 - One **master password**, with optional **fingerprint / face** unlock
 - **Android Autofill** — sign in to other apps *and to websites in your browser* with a tap
+- **Passkeys** (Android 14+) — websites and apps save passkeys in Vaultly and sign you in with them; saved passwords appear in the same sign-in sheet
 - Built-in **two-factor (TOTP) codes** — your 2FA lives next to your password
 
 **Everything organised**
@@ -74,9 +75,45 @@ browser reports the page's **web domain** to the Autofill Framework. Vaultly:
 > **Scope.** *Save* requests (offering to capture a brand-new login) are intentionally
 > out of scope — Vaultly only fills existing entries; you add new ones yourself.
 
+## 🔑 Passkeys (Android 14+)
+
+Vaultly is an Android **Credential Manager provider**. Turn it on in *Settings →
+Passwords, passkeys & accounts* (or from Vaultly's Settings → Passkeys).
+
+- **Create.** When a site or app offers to create a passkey, choose *Vaultly*,
+  unlock, and confirm. Vaultly generates an **ES256 (P-256)** key pair and answers
+  with a `"none"` attestation. The private key is stored only inside the encrypted
+  vault.
+- **Sign in.** The sign-in sheet shows *Unlock Vaultly*; unlocking lists the
+  passkeys (and saved passwords) for that site or app. Picking one asks you to unlock
+  again, then Vaultly signs the challenge.
+- **Who may ask.** A website's origin is accepted only from browsers on Google's
+  privileged-browser list (bundled), and the RP id must be that origin's domain or a
+  parent of it. An app must be listed in the site's Digital Asset Links file
+  (`https://<site>/.well-known/assetlinks.json`, relation
+  `delegate_permission/common.get_login_creds`), which Vaultly downloads for the
+  check.
+- **Flags.** Every passkey reports user verification (your vault unlock) and is
+  *backup eligible / backed up*, because it travels in encrypted backups. The
+  signature counter stays at 0.
+- **Backups.** Passkeys are included in encrypted `.vkbackup` files and are left
+  out of the plain CSV export.
+
+| What | How it is verified |
+| :-- | :-- |
+| authenticator data, COSE key, attestation object, clientDataJSON, signatures | ✅ JVM unit tests against the W3C WebAuthn L3 test vectors (§16.2) |
+| vault model, backup and CSV handling, request screens | ✅ Dart unit and widget tests |
+| the full flow on a phone (e.g. registering and signing in at webauthn.io) | ⚠️ Not yet verified on a device |
+
+**Limits.** Without the Public Suffix List on the device, an RP id that is a
+multi-label public suffix (such as `co.uk`) is not rejected. Digital Asset Links
+`include` statements are not followed. Saving a *new password* through Credential
+Manager is not offered. On Android 13 and older, the Autofill Service above keeps
+filling passwords; passkeys need Android 14.
+
 ## 🔒 Privacy & Security
 
-- **Offline-only.** No network code, nothing to leak.
+- **Offline-first.** The only network use is the optional update check and, when an Android *app* (not a website) asks for a passkey, downloading that site's public Digital Asset Links file to confirm the app belongs to it.
 - **Unlocked by you.** Your data key is derived from your master password with **Argon2id** (brute-force-resistant), held only in memory while unlocked and wiped on lock.
 - **Encrypted at rest.** The vault is stored as a single file encrypted with **AES-256-GCM**.
 - **Your backups, your key.** Backups are encrypted with a separate passphrase — a backup file alone is useless to anyone else.
