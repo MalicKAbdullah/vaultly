@@ -1,0 +1,5 @@
+Label,Website Address,Login Name,Secret,Comments,Extra Column
+Forum,forum.example,poster,"p@ss, word",says ""hi"",ignored
+Ünïcode Site,https://ü.example,user✓,pässwörd,,
+,,,,,
+Missing fields,https://missing.example

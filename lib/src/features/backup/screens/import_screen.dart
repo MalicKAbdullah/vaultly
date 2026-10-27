@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:core_theme/core_theme.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
@@ -6,14 +8,19 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:vaultkey/src/core/di.dart';
 import 'package:vaultkey/src/features/backup/services/backup_codec.dart';
-import 'package:vaultkey/src/features/backup/services/csv_codec.dart';
 import 'package:vaultkey/src/features/backup/services/file_transfer.dart';
 import 'package:vaultkey/src/features/backup/services/vault_merge.dart';
-import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
+import 'package:vaultkey/src/features/importers/models/imported_item.dart';
+import 'package:vaultkey/src/features/importers/parsers/csv_importers.dart';
+import 'package:vaultkey/src/features/importers/parsers/import_detector.dart';
+import 'package:vaultkey/src/features/importers/screens/csv_mapping_screen.dart';
+import 'package:vaultkey/src/features/importers/screens/import_preview_screen.dart';
+import 'package:vaultkey/src/features/importers/screens/migration_scan_screen.dart';
+import 'package:vaultkey/src/features/importers/services/import_files.dart';
 import 'package:vaultkey/src/features/vault/providers/vault_providers.dart';
 
-/// Restore a `.vkbackup` file (merge or replace) or import a CSV export
-/// from another password manager.
+/// Restore a `.vkbackup` file (merge or replace) or import from another
+/// password manager or authenticator.
 class ImportScreen extends ConsumerStatefulWidget {
   const ImportScreen({super.key});
 
@@ -28,6 +35,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
   ImportMode _mode = ImportMode.merge;
   bool _busy = false;
   String? _error;
+  String? _appImportError;
 
   @override
   void dispose() {
@@ -91,61 +99,42 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
     }
   }
 
-  Future<void> _importCsv() async {
-    final file = await FileTransfer.pickTextFile();
-    if (file == null || !mounted) return;
-    final List<CsvImportRow> rows;
+  /// Reads an export file and opens the column matcher or the preview.
+  /// The file's bytes are wiped as soon as they are parsed.
+  Future<void> _importFromApp({bool forceMapping = false}) async {
+    final picked = await ImportFiles.pickExport();
+    if (picked == null || !mounted) return;
+    final ImportReadResult result;
     try {
-      rows = CsvCodec.parseImport(file.content);
-    } on FormatException catch (e) {
-      setState(() => _error = e.message);
+      if (forceMapping) {
+        final table = CsvTable.parse(utf8.decode(picked.bytes));
+        result = ImportNeedsMapping(
+          table,
+          CsvImporters.guessMapping(table.header),
+        );
+      } else {
+        result =
+            ImportDetector.read(fileName: picked.name, bytes: picked.bytes);
+      }
+    } on ImportFormatException catch (e) {
+      setState(() => _appImportError = e.message);
       return;
-    }
-    if (rows.isEmpty) {
-      setState(() => _error = 'No entries found in that CSV file.');
+    } on FormatException {
+      setState(() => _appImportError = 'That file is not a CSV export.');
       return;
+    } finally {
+      picked.wipe();
     }
-
-    final proceed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Add ${rows.length} '
-            'entr${rows.length == 1 ? 'y' : 'ies'}?'),
-        content: Text(
-          'Found ${rows.length} entr${rows.length == 1 ? 'y' : 'ies'} in '
-          '"${file.name}". They will be added to your vault as new '
-          'entries.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Import'),
-          ),
-        ],
-      ),
-    );
-    if (!(proceed ?? false) || !mounted) return;
-
-    final notifier = ref.read(vaultEntriesProvider.notifier);
-    for (final row in rows) {
-      await notifier.create(
-        title: row.name,
-        username: row.username,
-        password: row.password,
-        url: row.url,
-        notes: row.note,
-        category: EntryCategory.login,
-      );
-    }
+    setState(() => _appImportError = null);
+    final Widget next = switch (result) {
+      ImportReady(:final batch) => ImportPreviewScreen(batch: batch),
+      ImportNeedsMapping(:final table, :final suggested) =>
+        CsvMappingScreen(table: table, suggested: suggested),
+    };
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${rows.length} entries imported.')),
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => next),
     );
-    context.pop();
   }
 
   @override
@@ -251,28 +240,57 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: AppSpacing.smd),
-            VaultCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _CardTitle(
-                    icon: Icons.table_chart_outlined,
-                    color: c.info,
-                    title: 'CSV from another app',
-                    body: 'Works with exports from Chrome, Bitwarden, and '
-                        'most other password managers.',
-                  ),
-                  const SizedBox(height: AppSpacing.mdl),
-                  VaultButton(
-                    label: 'Choose CSV file',
-                    icon: Icons.upload_file_rounded,
-                    variant: VaultButtonVariant.secondary,
-                    onPressed: _importCsv,
-                  ),
-                ],
-              ),
+            const SizedBox(height: AppSpacing.lg),
+            const SectionHeader(
+              title: 'From another app',
+              subtitle: 'Read from the file you choose; nothing is uploaded',
             ),
+            RowGroup(
+              separatorIndent: 66,
+              children: [
+                SettingsTile(
+                  icon: Icons.public_rounded,
+                  title: 'Chrome / Google Password Manager',
+                  subtitle: 'CSV export',
+                  onTap: _importFromApp,
+                ),
+                SettingsTile(
+                  icon: Icons.shield_outlined,
+                  title: 'Bitwarden',
+                  subtitle: 'Unencrypted JSON or CSV export',
+                  onTap: _importFromApp,
+                ),
+                SettingsTile(
+                  icon: Icons.key_rounded,
+                  title: '1Password',
+                  subtitle: '.1pux or CSV export',
+                  onTap: _importFromApp,
+                ),
+                SettingsTile(
+                  icon: Icons.table_chart_outlined,
+                  title: 'Other CSV',
+                  subtitle: 'Match the columns yourself',
+                  onTap: () => _importFromApp(forceMapping: true),
+                ),
+                SettingsTile(
+                  icon: Icons.qr_code_scanner_rounded,
+                  title: 'Google Authenticator',
+                  subtitle: 'Scan the Transfer accounts QR code',
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const MigrationScanScreen(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (_appImportError != null) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                _appImportError!,
+                style: AppTextStyles.bodySmall.copyWith(color: c.negative),
+              ),
+            ],
           ],
         ),
       ),

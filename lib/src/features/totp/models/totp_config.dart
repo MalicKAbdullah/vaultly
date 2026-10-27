@@ -4,7 +4,8 @@ import 'package:vaultkey/src/features/totp/services/base32.dart';
 /// Hash algorithm for TOTP code generation (RFC 6238).
 enum TotpAlgorithm {
   sha1('SHA1'),
-  sha256('SHA256');
+  sha256('SHA256'),
+  sha512('SHA512');
 
   const TotpAlgorithm(this.label);
 

@@ -35,6 +35,15 @@ dependencies:
   file_picker: ^10.1.9
   url_launcher: ^6.3.0
 
+  # Import from other apps: 1Password .1pux archives and authenticator QR
+  archive: ^4.5.2
+  mobile_scanner: ^7.4.2
+
+  # Device-to-device sync: pairing QR, X25519/HKDF/ChaCha20-Poly1305, mDNS
+  cryptography: ^2.9.0
+  qr_flutter: ^4.1.0
+  nsd: ^5.0.1
+
   # Android SAF folder access for scheduled auto-backups
   saf_util: ^0.9.0
   saf_stream: ^0.10.0

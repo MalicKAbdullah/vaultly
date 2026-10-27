@@ -1,0 +1,6 @@
+﻿folder,favorite,type,name,notes,fields,reprompt,login_uri,login_username,login_password,login_totp
+Work,1,login,GitLab,"Self-hosted, on-prem","Recovery: 1234",0,"https://gitlab.example.com,https://gitlab.example.com/admin",dev@example.com,"s3cr""et",otpauth://totp/GitLab:dev?secret=JBSWY3DPEHPK3PXP&digits=8
+,,note,Wi-Fi codes,"Home: hunter2
+Office: correct horse",,0,,,,
+,,login,Broken 2FA,,,0,https://broken.example,me,pw,not a secret!
+,0,login,Bare secret,,,0,https://bare.example,bare,pw2,jbsw y3dp ehpk 3pxp

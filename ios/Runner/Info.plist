@@ -68,6 +68,8 @@
 		</array>
 		<key>NSFaceIDUsageDescription</key>
 		<string>Vaultly uses Face ID to unlock your vault.</string>
+		<key>NSCameraUsageDescription</key>
+		<string>Vaultly uses the camera to scan authenticator export codes and to pair your devices.</string>
 		<key>UIFileSharingEnabled</key>
 		<true/>
 		<key>LSSupportsOpeningDocumentsInPlace</key>
