@@ -47,7 +47,7 @@ List<VaultEntry> realisticVault(int count, {int seed = 7}) {
         : pick < 0.25
             ? shared[rng.nextInt(shared.length)]
             : pick < 0.4
-                ? weak[rng.nextInt(weak.length)] + '${rng.nextInt(100)}'
+                ? '${weak[rng.nextInt(weak.length)]}${rng.nextInt(100)}'
                 : strong();
     final created = now.subtract(Duration(days: rng.nextInt(5 * 365)));
     final updated = created.add(

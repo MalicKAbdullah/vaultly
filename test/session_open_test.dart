@@ -83,7 +83,8 @@ void main() {
   SessionNotifier session(ProviderContainer c) =>
       c.read(sessionProvider.notifier);
 
-  test('a locked launch reads the verifier first and never the onboarding '
+  test(
+      'a locked launch reads the verifier first and never the onboarding '
       'flag', () async {
     final c = launch();
     await settle();
@@ -121,8 +122,7 @@ void main() {
     expect(atUnlock!.value, entries);
   });
 
-  test('biometric unlock: the vault file is read before the prompt',
-      () async {
+  test('biometric unlock: the vault file is read before the prompt', () async {
     final service = BiometricUnlockService(
       storage: storage,
       authenticator: biometrics,

@@ -26,8 +26,8 @@ void main() {
         () async {
       final entries = realisticVault(1000, seed: seed);
       final reference = Naive.analyze(entries, now: now);
-      expectSameReport(VaultHealthAnalyzer.analyze(entries, now: now),
-          reference);
+      expectSameReport(
+          VaultHealthAnalyzer.analyze(entries, now: now), reference);
       final viaWorker = await VaultHealthAnalyzer.analyzeOn(
         const IsolateWorker(),
         entries,
