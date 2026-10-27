@@ -208,6 +208,26 @@ void main() {
     expect(fileStore.readCount, 3);
   });
 
+  // Creating, unwrapping and re-wrapping the recovery key are real Argon2id
+  // derivations, slow on a shared CI runner.
+  test('a recovery reset opens the vault re-encrypted under the new key',
+      () async {
+    final c = launch();
+    await settle();
+    await session(c).unlock(password);
+    final recovery = await session(c).createRecoveryKey();
+    c.listen(vaultEntriesProvider, (_, __) {});
+    session(c).lock();
+    await settle();
+
+    final result = await session(c).resetWithRecoveryKey(
+      recoveryKey: recovery,
+      newPassword: 'a brand new password',
+    );
+    expect(result, isA<UnlockSuccess>());
+    expect(c.read(vaultEntriesProvider).requireValue, entries);
+  }, timeout: const Timeout(Duration(minutes: 2)));
+
   test('the unlock prerequisites started at launch are handed over once',
       () async {
     final c = launch();
