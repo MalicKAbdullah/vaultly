@@ -8,6 +8,8 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:vaultkey/src/core/appearance_provider.dart';
 import 'package:vaultkey/src/core/di.dart';
 import 'package:vaultkey/src/core/interfaces/biometric_key_vault.dart';
 import 'package:vaultkey/src/core/shell/home_shell.dart';
@@ -185,28 +187,50 @@ Future<List<Override>> _overrides({
       updateCheckProvider.overrideWith((_) async => null),
     ];
 
+/// The appearance toggle as the user left it: [mode] stored in preferences,
+/// then loaded the way `main` loads it.
+Future<AppearanceController> _appearance(ThemeMode mode) async {
+  SharedPreferences.resetStatic();
+  SharedPreferences.setMockInitialValues({
+    AppearanceController.storageKey: mode.name,
+  });
+  return AppearanceController.load();
+}
+
 Future<void> _render(
   WidgetTester tester,
   String name,
   Widget Function() screen, {
   List<Override> overrides = const [],
   int? tab,
+  double width = 390,
   double height = 844,
+  List<ThemeMode> modes = const [ThemeMode.light, ThemeMode.dark],
+  Future<void> Function(WidgetTester tester)? act,
 }) async {
-  const width = 390.0;
   tester.view.devicePixelRatio = 2;
-  tester.view.physicalSize = Size((width * 2 + 8) * 2, height * 2);
+  tester.view.physicalSize = Size(
+    (width * modes.length + 8 * (modes.length - 1)) * 2,
+    height * 2,
+  );
   addTearDown(tester.view.reset);
   final key = GlobalKey();
+  final appearances = [for (final m in modes) await _appearance(m)];
 
-  Widget pane(Brightness b) => SizedBox(
+  Widget pane(AppearanceController appearance) => SizedBox(
         width: width,
         height: height,
         child: ProviderScope(
-          overrides: overrides,
+          overrides: [
+            ...overrides,
+            appearanceProvider.overrideWithValue(appearance),
+          ],
           child: MaterialApp(
             debugShowCheckedModeBanner: false,
-            theme: AppTheme.build(b, accent: AppAccents.vaultly),
+            theme: AppTheme.build(Brightness.light, accent: AppAccents.vaultly),
+            darkTheme:
+                AppTheme.build(Brightness.dark, accent: AppAccents.vaultly),
+            themeMode: appearance.mode,
             home: MediaQuery(
               data: MediaQueryData(
                 size: Size(width, height),
@@ -239,15 +263,21 @@ Future<void> _render(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              pane(Brightness.light),
-              const SizedBox(width: 8),
-              pane(Brightness.dark),
+              for (final (i, appearance) in appearances.indexed) ...[
+                if (i > 0) const SizedBox(width: 8),
+                pane(appearance),
+              ],
             ],
           ),
         ),
       ),
     ),
   );
+  if (act != null) {
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    await tester.pump(const Duration(milliseconds: 100));
+    await act(tester);
+  }
   for (var i = 0; i < 10; i++) {
     await tester.runAsync(() => Future<void>.delayed(Duration.zero));
     await tester.pump(const Duration(milliseconds: 100));
@@ -411,7 +441,13 @@ void main() {
     );
   });
 
-  testWidgets('lock', skip: skip != null, (tester) async {
+  /// A vault with a master password and, when [biometric], fingerprint
+  /// unlock switched on and a recovery key saved. The fingerprint prompt
+  /// fails, so the lock stays up.
+  Future<List<Override>> lockOverrides(
+    WidgetTester tester, {
+    required bool biometric,
+  }) async {
     const password = 'gallery only';
     final storage = FakeSecureStorage();
     final fileStore = InMemoryFileStore();
@@ -426,6 +462,8 @@ void main() {
       );
       await auth.setup(password);
       final unlocked = await auth.unlock(password) as UnlockSuccess;
+      await auth.createRecoveryKey(unlocked.key);
+      if (!biometric) return;
       await BiometricUnlockService(
         storage: storage,
         authenticator: biometrics,
@@ -435,15 +473,71 @@ void main() {
         ),
       ).enable(unlocked.key);
     });
+    return _overrides(
+      storage: storage,
+      fileStore: fileStore,
+      biometrics: biometrics,
+    );
+  }
+
+  Future<void> tapEach(WidgetTester tester, Finder finder) async {
+    for (final element in finder.evaluate().toList()) {
+      await tester.tap(find.byWidget(element.widget).first);
+    }
+  }
+
+  testWidgets('lock-biometric', skip: skip != null, (tester) async {
     await _render(
       tester,
-      'lock',
+      'lock-biometric',
       UnlockScreen.new,
-      overrides: await _overrides(
-        storage: storage,
-        fileStore: fileStore,
-        biometrics: biometrics,
-      ),
+      overrides: await lockOverrides(tester, biometric: true),
+    );
+  });
+
+  testWidgets('lock-password', skip: skip != null, (tester) async {
+    await _render(
+      tester,
+      'lock-password',
+      UnlockScreen.new,
+      overrides: await lockOverrides(tester, biometric: false),
+    );
+  });
+
+  testWidgets('lock-error', skip: skip != null, (tester) async {
+    await _render(
+      tester,
+      'lock-error',
+      UnlockScreen.new,
+      overrides: await lockOverrides(tester, biometric: true),
+      act: (tester) async {
+        for (final field in find.byType(TextField).evaluate().toList()) {
+          await tester.enterText(find.byWidget(field.widget), 'not it');
+        }
+        await tapEach(tester, find.text('Unlock'));
+      },
+    );
+  });
+
+  testWidgets('lock-recovery', skip: skip != null, (tester) async {
+    await _render(
+      tester,
+      'lock-recovery',
+      UnlockScreen.new,
+      overrides: await lockOverrides(tester, biometric: true),
+      act: (tester) => tapEach(tester, find.text('Forgot password?')),
+    );
+  });
+
+  testWidgets('lock-small', skip: skip != null, (tester) async {
+    await _render(
+      tester,
+      'lock-small',
+      UnlockScreen.new,
+      overrides: await lockOverrides(tester, biometric: true),
+      width: 360,
+      height: 640,
+      modes: const [ThemeMode.light],
     );
   });
 }
