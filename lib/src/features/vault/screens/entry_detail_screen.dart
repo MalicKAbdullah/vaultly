@@ -193,29 +193,20 @@ class _EntryDetailScreenState extends ConsumerState<EntryDetailScreen> {
           ),
           if (entry.password.isNotEmpty || entry.url.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.lg),
-            Row(
+            DetailActionButtons(
               children: [
                 if (entry.password.isNotEmpty)
-                  Expanded(
-                    flex: 3,
-                    child: VaultButton(
-                      label: 'Copy password',
-                      icon: Icons.copy_rounded,
-                      onPressed: () =>
-                          _copySensitive(entry.password, 'Password'),
-                    ),
+                  VaultButton(
+                    label: 'Copy password',
+                    icon: Icons.copy_rounded,
+                    onPressed: () => _copySensitive(entry.password, 'Password'),
                   ),
-                if (entry.password.isNotEmpty && entry.url.isNotEmpty)
-                  const SizedBox(width: AppSpacing.smd),
                 if (entry.url.isNotEmpty)
-                  Expanded(
-                    flex: 2,
-                    child: VaultButton(
-                      label: 'Open site',
-                      icon: Icons.open_in_new_rounded,
-                      variant: VaultButtonVariant.secondary,
-                      onPressed: () => _openUrl(entry.url),
-                    ),
+                  VaultButton(
+                    label: 'Open site',
+                    icon: Icons.open_in_new_rounded,
+                    variant: VaultButtonVariant.secondary,
+                    onPressed: () => _openUrl(entry.url),
                   ),
               ],
             ),
@@ -368,6 +359,40 @@ class _HistoryTileState extends State<_HistoryTile> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Side by side when every label fits on one line; stacked full-width when
+/// narrow screens or enlarged text would force a label to truncate.
+class DetailActionButtons extends StatelessWidget {
+  const DetailActionButtons({super.key, required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final stacked = children.length > 1 &&
+        (MediaQuery.textScalerOf(context).scale(1) > 1.1 ||
+            MediaQuery.sizeOf(context).width < 400);
+    if (!stacked) {
+      return Row(
+        children: [
+          for (var i = 0; i < children.length; i++) ...[
+            if (i > 0) const SizedBox(width: AppSpacing.smd),
+            Expanded(child: children[i]),
+          ],
+        ],
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < children.length; i++) ...[
+          if (i > 0) const SizedBox(height: AppSpacing.smd),
+          children[i],
+        ],
+      ],
     );
   }
 }
