@@ -8,6 +8,7 @@ import 'package:vaultkey/src/core/di.dart';
 import 'package:vaultkey/src/core/router/app_router.dart';
 import 'package:vaultkey/src/features/importers/models/imported_item.dart';
 import 'package:vaultkey/src/features/importers/services/import_planner.dart';
+import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
 import 'package:vaultkey/src/features/vault/providers/vault_providers.dart';
 
 /// Shows what an export contains and how it lands in the vault (counts,
@@ -28,10 +29,10 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen> {
   DuplicateAction _action = DuplicateAction.skip;
   bool _busy = false;
 
-  ImportOutcome _plan({required bool dryRun}) {
+  ImportOutcome _plan(List<VaultEntry> current, {required bool dryRun}) {
     var n = 0;
     return ImportPlanner.apply(
-      current: ref.read(vaultEntriesProvider).valueOrNull ?? const [],
+      current: current,
       batch: widget.batch,
       action: _action,
       now: ref.read(clockProvider).now(),
@@ -41,7 +42,8 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen> {
 
   Future<void> _import() async {
     setState(() => _busy = true);
-    final outcome = _plan(dryRun: false);
+    final current = await ref.read(vaultEntriesProvider.future);
+    final outcome = _plan(current, dryRun: false);
     await ref.read(vaultEntriesProvider.notifier).replaceAll(outcome.entries);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -68,7 +70,14 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen> {
   Widget build(BuildContext context) {
     final c = SuiteColors.of(context);
     final batch = widget.batch;
-    final outcome = _plan(dryRun: true);
+    final current = ref.watch(vaultEntriesProvider).valueOrNull;
+    if (current == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Review import')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+    final outcome = _plan(current, dryRun: true);
     final duplicates = outcome.duplicates;
 
     return Scaffold(
@@ -179,8 +188,9 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen> {
             AppBanner(
               kind: BannerKind.warning,
               icon: Icons.info_outline_rounded,
-              title: '${_plural(batch.warnings.length, 'record', 'records')} '
-                  'need attention',
+              title: batch.warnings.length == 1
+                  ? '1 record needs attention'
+                  : '${batch.warnings.length} records need attention',
               message: batch.warnings.take(20).join('\n'),
             ),
           ],

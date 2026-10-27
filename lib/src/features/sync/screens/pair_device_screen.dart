@@ -67,6 +67,7 @@ class _PairDeviceScreenState extends ConsumerState<PairDeviceScreen> {
       if (!mounted) return;
       setState(() {
         _role = role;
+        _step = _Step.starting;
         _error = null;
         _scanned = false;
         _result = null;
@@ -85,7 +86,6 @@ class _PairDeviceScreenState extends ConsumerState<PairDeviceScreen> {
   }
 
   Future<void> _showCode() async {
-    setState(() => _step = _Step.starting);
     try {
       final device = await ref.read(syncLedgerProvider).device();
       final host = _host = await PairingHost.open(device);
