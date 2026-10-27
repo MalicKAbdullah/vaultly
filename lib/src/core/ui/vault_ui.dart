@@ -97,6 +97,7 @@ IconData categoryIcon(EntryCategory category) => switch (category) {
       EntryCategory.card => Icons.credit_card_rounded,
       EntryCategory.identity => Icons.badge_outlined,
       EntryCategory.note => Icons.sticky_note_2_outlined,
+      EntryCategory.passkey => Icons.key_rounded,
     };
 
 /// Large-title header of a tab: an eyebrow line over an h1, with optional

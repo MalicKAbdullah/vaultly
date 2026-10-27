@@ -173,8 +173,10 @@ class _EntryEditorScreenState extends ConsumerState<EntryEditorScreen> {
             AppSegmentedControl<EntryCategory>(
               height: 44,
               segments: [
+                // Passkeys come only from Credential Manager.
                 for (final category in EntryCategory.values)
-                  AppSegment(value: category, label: category.label),
+                  if (category != EntryCategory.passkey)
+                    AppSegment(value: category, label: category.label),
               ],
               selected: _category,
               onChanged: (category) => setState(() => _category = category),

@@ -48,7 +48,12 @@ class _AutofillPickerScreenState extends ConsumerState<AutofillPickerScreen> {
     final c = SuiteColors.of(context);
     final request = ref.watch(autofillRequestProvider).valueOrNull ??
         const AutofillFillRequest();
-    final all = ref.watch(vaultEntriesProvider).valueOrNull ?? const [];
+    // Passkeys have no password to fill.
+    final all = <VaultEntry>[
+      for (final e in ref.watch(vaultEntriesProvider).valueOrNull ??
+          const <VaultEntry>[])
+        if (e.passkey == null) e,
+    ];
 
     final needle = _search.trim().toLowerCase();
     final List<VaultEntry> entries;

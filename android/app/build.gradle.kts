@@ -74,4 +74,10 @@ dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     // BiometricPrompt + CryptoObject for the hardware-bound vault key.
     implementation("androidx.biometric:biometric:1.1.0")
+    // Credential Manager provider API (passkeys and passwords, Android 14+).
+    implementation("androidx.credentials:credentials:1.5.0")
+
+    testImplementation("junit:junit:4.13.2")
+    // Real org.json for JVM unit tests (android.jar only ships stubs).
+    testImplementation("org.json:json:20240303")
 }

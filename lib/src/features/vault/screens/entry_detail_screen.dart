@@ -9,6 +9,7 @@ import 'package:vaultkey/src/core/di.dart';
 import 'package:vaultkey/src/core/router/app_router.dart';
 import 'package:vaultkey/src/core/ui/vault_ui.dart';
 import 'package:vaultkey/src/features/generator/widgets/strength_meter.dart';
+import 'package:vaultkey/src/features/passkeys/screens/passkey_detail_screen.dart';
 import 'package:vaultkey/src/features/totp/widgets/totp_code_card.dart';
 import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
 import 'package:vaultkey/src/features/vault/providers/vault_providers.dart';
@@ -64,6 +65,7 @@ class _EntryDetailScreenState extends ConsumerState<EntryDetailScreen> {
       // Deleted while open — leave gracefully.
       return const Scaffold(body: SizedBox.shrink());
     }
+    if (entry.passkey != null) return PasskeyDetailScreen(entry: entry);
     final c = SuiteColors.of(context);
     final now = ref.watch(clockProvider).now();
     final date = DateFormat('d MMM yyyy');

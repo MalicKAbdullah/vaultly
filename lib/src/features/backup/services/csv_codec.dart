@@ -74,10 +74,12 @@ abstract final class CsvCodec {
 
   /// Exports entries as plain CSV (name,url,username,password,note,totp).
   /// Two-factor secrets travel as otpauth URIs so other managers import
-  /// them with their parameters intact.
+  /// them with their parameters intact. Passkeys are left out: a private
+  /// key never leaves Vaultly unencrypted, and CSV has no column for one.
   static String export(List<VaultEntry> entries) {
     final buffer = StringBuffer('name,url,username,password,note,totp\r\n');
     for (final e in entries) {
+      if (e.passkey != null) continue;
       final totp = e.totp == null
           ? ''
           : OtpauthParser.toUri(e.totp!, issuer: e.title, account: e.username);

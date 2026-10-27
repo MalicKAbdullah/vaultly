@@ -130,8 +130,9 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
   @override
   Widget build(BuildContext context) {
     final c = SuiteColors.of(context);
-    final entryCount =
-        (ref.watch(vaultEntriesProvider).valueOrNull ?? const []).length;
+    final entries = ref.watch(vaultEntriesProvider).valueOrNull ?? const [];
+    final entryCount = entries.length;
+    final passkeyCount = entries.where((e) => e.passkey != null).length;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Export')),
@@ -153,9 +154,9 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                     icon: Icons.lock_rounded,
                     color: c.accent,
                     title: 'Encrypted backup',
-                    body: 'Protects all $entryCount entries with a passphrase '
-                        'of its own. This is the safe way to move or back up '
-                        'your vault.',
+                    body: 'Protects all $entryCount entries, passkeys '
+                        'included, with a passphrase of its own. This is the '
+                        'safe way to move or back up your vault.',
                   ),
                   const SizedBox(height: AppSpacing.mdl),
                   AppTextField(
@@ -216,6 +217,18 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                         'is not protected — treat it like a written-down '
                         'list of all your passwords.',
                   ),
+                  if (passkeyCount > 0) ...[
+                    const SizedBox(height: AppSpacing.md),
+                    AppBanner(
+                      title: passkeyCount == 1
+                          ? 'Your passkey is not included'
+                          : 'Your $passkeyCount passkeys are not included',
+                      message: 'A passkey is a private key, and Vaultly never '
+                          'writes one to an unencrypted file. Use an encrypted '
+                          'backup to move passkeys.',
+                      icon: Icons.key_rounded,
+                    ),
+                  ],
                   const SizedBox(height: AppSpacing.mdl),
                   VaultButton(
                     label: 'Export CSV',

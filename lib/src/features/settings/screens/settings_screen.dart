@@ -10,6 +10,7 @@ import 'package:vaultkey/src/core/router/app_router.dart';
 import 'package:vaultkey/src/core/ui/vault_ui.dart';
 import 'package:vaultkey/src/features/auth/providers/auth_providers.dart';
 import 'package:vaultkey/src/features/auth/widgets/identity_check.dart';
+import 'package:vaultkey/src/features/passkeys/widgets/passkey_settings_section.dart';
 import 'package:vaultkey/src/features/settings/providers/settings_providers.dart';
 import 'package:vaultkey/src/features/settings/widgets/autofill_section.dart';
 import 'package:vaultkey/src/features/vault/providers/vault_providers.dart';
@@ -200,6 +201,7 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                   // Hides itself entirely on devices without autofill (iOS).
                   const AutofillSection(),
+                  const PasskeySettingsSection(),
                   const SizedBox(height: AppSpacing.lg),
                   const SectionHeader(
                     title: 'Auto-backup',
