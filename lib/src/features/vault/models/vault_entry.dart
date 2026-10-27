@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:vaultkey/src/features/passkeys/models/passkey_credential.dart';
 import 'package:vaultkey/src/features/totp/models/totp_config.dart';
 
 /// The kind of item stored in the vault.
@@ -6,7 +7,10 @@ enum EntryCategory {
   login('Login'),
   card('Card'),
   identity('Identity'),
-  note('Note');
+  note('Note'),
+
+  /// Created by a website or app through Credential Manager, never typed in.
+  passkey('Passkey');
 
   const EntryCategory(this.label);
 
@@ -66,6 +70,7 @@ final class VaultEntry {
     this.category = EntryCategory.login,
     this.favorite = false,
     this.totp,
+    this.passkey,
     this.history = const [],
   });
 
@@ -83,6 +88,12 @@ final class VaultEntry {
         totp: json['totp'] == null
             ? null
             : TotpConfig.fromJson(json['totp'] as Map<String, dynamic>),
+        // Only passkey entries carry one; older vaults have none.
+        passkey: json['passkey'] == null
+            ? null
+            : PasskeyCredential.fromJson(
+                json['passkey'] as Map<String, dynamic>,
+              ),
         createdAt: DateTime.parse(json['createdAt'] as String),
         updatedAt: DateTime.parse(json['updatedAt'] as String),
         passwordChangedAt: DateTime.parse(
@@ -106,6 +117,9 @@ final class VaultEntry {
   /// Two-factor (TOTP) secret and parameters, when the account has 2FA.
   final TotpConfig? totp;
 
+  /// The passkey, set exactly when [category] is [EntryCategory.passkey].
+  final PasskeyCredential? passkey;
+
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -125,6 +139,7 @@ final class VaultEntry {
         'category': category.name,
         'favorite': favorite,
         if (totp != null) 'totp': totp!.toJson(),
+        if (passkey != null) 'passkey': passkey!.toJson(),
         'createdAt': createdAt.toIso8601String(),
         'updatedAt': updatedAt.toIso8601String(),
         'passwordChangedAt': passwordChangedAt.toIso8601String(),
@@ -140,6 +155,7 @@ final class VaultEntry {
     EntryCategory? category,
     bool? favorite,
     TotpConfig? Function()? totp,
+    PasskeyCredential? passkey,
     DateTime? updatedAt,
     DateTime? passwordChangedAt,
     List<PasswordHistoryEntry>? history,
@@ -154,6 +170,7 @@ final class VaultEntry {
         category: category ?? this.category,
         favorite: favorite ?? this.favorite,
         totp: totp == null ? this.totp : totp(),
+        passkey: passkey ?? this.passkey,
         createdAt: createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
         passwordChangedAt: passwordChangedAt ?? this.passwordChangedAt,
@@ -188,12 +205,25 @@ final class VaultEntry {
       other.category == category &&
       other.favorite == favorite &&
       other.totp == totp &&
+      other.passkey == passkey &&
       other.createdAt == createdAt &&
       other.updatedAt == updatedAt &&
       other.passwordChangedAt == passwordChangedAt &&
       listEquals(other.history, history);
 
   @override
-  int get hashCode => Object.hash(id, title, username, password, url, notes,
-      category, favorite, totp, createdAt, updatedAt, passwordChangedAt);
+  int get hashCode => Object.hash(
+      id,
+      title,
+      username,
+      password,
+      url,
+      notes,
+      category,
+      favorite,
+      totp,
+      passkey,
+      createdAt,
+      updatedAt,
+      passwordChangedAt);
 }

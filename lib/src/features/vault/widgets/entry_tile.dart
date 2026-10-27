@@ -122,7 +122,9 @@ class EntryTile extends StatelessWidget {
                       value: 'copy-username',
                       child: Text('Copy username'),
                     ),
-                  const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                  // A passkey has nothing the user can type over.
+                  if (entry.passkey == null)
+                    const PopupMenuItem(value: 'edit', child: Text('Edit')),
                   const PopupMenuItem(value: 'delete', child: Text('Delete')),
                 ],
               ),
