@@ -2,6 +2,7 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:vaultkey/src/core/interfaces/credential_bridge.dart';
 import 'package:vaultkey/src/core/shell/home_shell.dart';
 import 'package:vaultkey/src/features/auth/providers/auth_providers.dart';
 import 'package:vaultkey/src/features/autofill/providers/autofill_providers.dart';
@@ -14,6 +15,8 @@ import 'package:vaultkey/src/features/backup/screens/export_screen.dart';
 import 'package:vaultkey/src/features/backup/screens/import_screen.dart';
 import 'package:vaultkey/src/features/generator/screens/generator_screen.dart';
 import 'package:vaultkey/src/features/health/screens/health_screen.dart';
+import 'package:vaultkey/src/features/passkeys/providers/credential_providers.dart';
+import 'package:vaultkey/src/features/passkeys/screens/credential_request_screen.dart';
 import 'package:vaultkey/src/features/settings/screens/change_master_password_screen.dart';
 import 'package:vaultkey/src/features/settings/screens/settings_screen.dart';
 import 'package:vaultkey/src/features/vault/screens/entry_detail_screen.dart';
@@ -35,6 +38,7 @@ abstract final class AppRoutes {
   static const String import = '/import';
   static const String autofillPicker = '/autofill-picker';
   static const String recoveryKey = '/recovery-key';
+  static const String credentialRequest = '/credential-request';
 
   static String entryDetail(String id) => '/entry/$id';
 
@@ -51,6 +55,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     // Re-route once the platform reports whether this launch is answering
     // another app's fill request.
     ..listen(autofillRequestProvider, (_, __) => refresh.value++)
+    ..listen(credentialRequestProvider, (_, __) => refresh.value++)
     // Re-route once the first-run flag loads or gets written.
     ..listen(onboardingSeenProvider, (_, __) => refresh.value++)
     ..listen(recoveryPromptProvider, (_, __) => refresh.value++);
@@ -62,6 +67,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final status = ref.read(sessionProvider);
       final location = state.matchedLocation;
+      final credential = ref.read(credentialRequestProvider).valueOrNull;
+      // A refused passkey or password request is explained without
+      // unlocking: nothing from the vault is involved.
+      if (credential is RejectedCredentialRequest) {
+        return location == AppRoutes.credentialRequest
+            ? null
+            : AppRoutes.credentialRequest;
+      }
       switch (status) {
         case AuthStatus.unknown:
           return AppRoutes.splash;
@@ -74,6 +87,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         case AuthStatus.locked:
           return location == AppRoutes.unlock ? null : AppRoutes.unlock;
         case AuthStatus.unlocked:
+          // Answering a Credential Manager request takes over the session.
+          if (credential != null) {
+            return location == AppRoutes.credentialRequest
+                ? null
+                : AppRoutes.credentialRequest;
+          }
           // Answering another app's fill request takes over the session:
           // the only destination is the entry picker.
           final autofillPending =
@@ -95,7 +114,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               location == AppRoutes.onboarding ||
               location == AppRoutes.setup ||
               location == AppRoutes.unlock ||
-              location == AppRoutes.autofillPicker;
+              location == AppRoutes.autofillPicker ||
+              location == AppRoutes.credentialRequest;
           return gate ? AppRoutes.vault : null;
       }
     },
@@ -124,6 +144,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.autofillPicker,
         parentNavigatorKey: _rootNavigatorKey,
         builder: (_, __) => const AutofillPickerScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.credentialRequest,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (_, __) => const CredentialRequestScreen(),
       ),
       GoRoute(
         path: AppRoutes.recoveryKey,
