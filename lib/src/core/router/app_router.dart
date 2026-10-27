@@ -19,6 +19,7 @@ import 'package:vaultkey/src/features/passkeys/providers/credential_providers.da
 import 'package:vaultkey/src/features/passkeys/screens/credential_request_screen.dart';
 import 'package:vaultkey/src/features/settings/screens/change_master_password_screen.dart';
 import 'package:vaultkey/src/features/settings/screens/settings_screen.dart';
+import 'package:vaultkey/src/features/sync/screens/sync_screen.dart';
 import 'package:vaultkey/src/features/vault/screens/entry_detail_screen.dart';
 import 'package:vaultkey/src/features/vault/screens/entry_editor_screen.dart';
 import 'package:vaultkey/src/features/vault/screens/vault_list_screen.dart';
@@ -36,6 +37,7 @@ abstract final class AppRoutes {
   static const String changeMasterPassword = '/change-master-password';
   static const String export = '/export';
   static const String import = '/import';
+  static const String sync = '/sync';
   static const String autofillPicker = '/autofill-picker';
   static const String recoveryKey = '/recovery-key';
   static const String credentialRequest = '/credential-request';
@@ -186,6 +188,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.import,
         parentNavigatorKey: _rootNavigatorKey,
         builder: (_, __) => const ImportScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.sync,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (_, __) => const SyncScreen(),
       ),
       StatefulShellRoute.indexedStack(
         builder: (_, __, shell) => HomeShell(shell: shell),
