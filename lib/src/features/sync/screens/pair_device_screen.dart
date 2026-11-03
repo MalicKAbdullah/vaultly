@@ -4,7 +4,7 @@ import 'package:core_theme/core_theme.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:flutter_zxing/flutter_zxing.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:vaultkey/src/core/di.dart';
 import 'package:vaultkey/src/features/sync/crypto/frame_channel.dart';
@@ -34,7 +34,6 @@ class _PairDeviceScreenState extends ConsumerState<PairDeviceScreen> {
   FrameChannel? _channel;
   PairingResult? _result;
   String? _error;
-  MobileScannerController? _scanner;
   bool _scanned = false;
 
   @override
@@ -54,8 +53,6 @@ class _PairDeviceScreenState extends ConsumerState<PairDeviceScreen> {
     _host = null;
     await _channel?.close();
     _channel = null;
-    _scanner?.dispose();
-    _scanner = null;
   }
 
   void _setRole(_Role role) {
@@ -75,12 +72,7 @@ class _PairDeviceScreenState extends ConsumerState<PairDeviceScreen> {
       if (role == _Role.show) {
         unawaited(_showCode());
       } else {
-        setState(() {
-          _scanner = MobileScannerController(
-            formats: const [BarcodeFormat.qrCode],
-          );
-          _step = _Step.waiting;
-        });
+        setState(() => _step = _Step.waiting);
       }
     }));
   }
@@ -106,12 +98,14 @@ class _PairDeviceScreenState extends ConsumerState<PairDeviceScreen> {
     }
   }
 
-  Future<void> _onScan(BarcodeCapture capture) async {
+  Future<void> _onScan(Code code) async {
     if (_scanned) return;
-    final raw = capture.barcodes.firstOrNull?.rawValue;
-    if (raw == null || !raw.startsWith(PairingInvite.scheme)) return;
+    final raw = code.text;
+    if (!code.isValid || raw == null || !raw.startsWith(PairingInvite.scheme)) {
+      return;
+    }
     _scanned = true;
-    await _scanner?.stop();
+    // Leaving the waiting step removes the camera view, which stops it.
     setState(() => _step = _Step.starting);
     try {
       final invite = PairingInvite.parse(raw);
@@ -241,9 +235,11 @@ class _PairDeviceScreenState extends ConsumerState<PairDeviceScreen> {
                 borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
                 child: AspectRatio(
                   aspectRatio: 1,
-                  child: MobileScanner(
-                    controller: _scanner,
-                    onDetect: _onScan,
+                  child: ReaderWidget(
+                    codeFormat: Format.qrCode,
+                    showGallery: false,
+                    showToggleCamera: false,
+                    onScan: _onScan,
                   ),
                 ),
               ),

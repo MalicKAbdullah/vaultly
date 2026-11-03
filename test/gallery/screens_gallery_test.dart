@@ -33,7 +33,10 @@ import 'package:vaultkey/src/features/vault/screens/vault_list_screen.dart';
 import '../fakes/fakes.dart';
 import '../widgets/helpers.dart';
 
-/// Design-review renders of every main screen, light and dark side by side.
+/// Design-review renders of every main screen, light and dark side by side,
+/// plus the store listing screenshots (`store/<n>.png`: light, one phone
+/// screen each, copied to `fastlane/metadata/android/en-US/images/
+/// phoneScreenshots/`).
 /// Run on request only: `GALLERY=<out dir> flutter test test/gallery`.
 /// Pixels differ per platform, so these are previews, not CI goldens. All
 /// items are invented; none of the passwords belong to anyone.
@@ -207,12 +210,13 @@ Future<void> _render(
   double width = 390,
   double height = 844,
   List<ThemeMode> modes = const [ThemeMode.light, ThemeMode.dark],
+  double pixelRatio = 2,
   Future<void> Function(WidgetTester tester)? act,
 }) async {
-  tester.view.devicePixelRatio = 2;
+  tester.view.devicePixelRatio = pixelRatio;
   tester.view.physicalSize = Size(
-    (width * modes.length + 8 * (modes.length - 1)) * 2,
-    height * 2,
+    (width * modes.length + 8 * (modes.length - 1)) * pixelRatio,
+    height * pixelRatio,
   );
   addTearDown(tester.view.reset);
   final key = GlobalKey();
@@ -288,10 +292,11 @@ Future<void> _render(
   await tester.runAsync(() async {
     final boundary =
         key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
-    final image = await boundary.toImage(pixelRatio: 2);
+    final image = await boundary.toImage(pixelRatio: pixelRatio);
     final data = await image.toByteData(format: ui.ImageByteFormat.png);
-    Directory(_out!).createSync(recursive: true);
-    File('$_out/$name.png').writeAsBytesSync(data!.buffer.asUint8List());
+    File('$_out/$name.png')
+      ..parent.createSync(recursive: true)
+      ..writeAsBytesSync(data!.buffer.asUint8List());
   });
   // Dispose the screens (and their timers) before the test ends.
   await tester.pumpWidget(const SizedBox.shrink());
@@ -539,6 +544,63 @@ void main() {
       width: 360,
       height: 640,
       modes: const [ThemeMode.light],
+    );
+  });
+
+  /// One store screenshot: light theme, a single 390×844 phone screen at
+  /// 3× (1170×2532).
+  Future<void> storeShot(
+    WidgetTester tester,
+    int n,
+    Widget Function() screen, {
+    required List<Override> overrides,
+    int? tab,
+  }) =>
+      _render(
+        tester,
+        'store/$n',
+        screen,
+        overrides: overrides,
+        tab: tab,
+        modes: const [ThemeMode.light],
+        pixelRatio: 3,
+      );
+
+  testWidgets('store-1-vault', skip: skip != null, (tester) async {
+    await storeShot(tester, 1, VaultListScreen.new,
+        overrides: await _overrides(), tab: 0);
+  });
+
+  testWidgets('store-2-detail', skip: skip != null, (tester) async {
+    await storeShot(
+      tester,
+      2,
+      () => const EntryDetailScreen(entryId: 'github'),
+      overrides: await _overrides(),
+    );
+  });
+
+  testWidgets('store-3-security', skip: skip != null, (tester) async {
+    await storeShot(tester, 3, HealthScreen.new,
+        overrides: await _overrides(), tab: 2);
+  });
+
+  testWidgets('store-4-generator', skip: skip != null, (tester) async {
+    await storeShot(tester, 4, GeneratorScreen.new,
+        overrides: await _overrides(), tab: 1);
+  });
+
+  testWidgets('store-5-import', skip: skip != null, (tester) async {
+    await storeShot(tester, 5, ImportScreen.new,
+        overrides: await _overrides());
+  });
+
+  testWidgets('store-6-unlock', skip: skip != null, (tester) async {
+    await storeShot(
+      tester,
+      6,
+      UnlockScreen.new,
+      overrides: await lockOverrides(tester, biometric: true),
     );
   });
 }

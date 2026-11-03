@@ -37,7 +37,9 @@ dependencies:
 
   # Import from other apps: 1Password .1pux archives and authenticator QR
   archive: ^4.5.2
-  mobile_scanner: ^7.4.2
+  # ZXing (zxing-cpp, built from source): camera and image QR decoding
+  # without Google ML Kit, so the app stays free of proprietary libraries.
+  flutter_zxing: ^3.1.0
 
   # Device-to-device sync: pairing QR, X25519/HKDF/ChaCha20-Poly1305, mDNS
   cryptography: ^2.9.0
@@ -58,11 +60,6 @@ dependencies:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_storage
-      ref: 3e90d1221ef1e4010748944c83459df13d18c205
-  core_security:
-    git:
-      url: https://github.com/MalicKAbdullah/secure-suite-core.git
-      path: core_security
       ref: 3e90d1221ef1e4010748944c83459df13d18c205
   core_theme:
     git:

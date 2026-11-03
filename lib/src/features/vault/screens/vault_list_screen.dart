@@ -176,7 +176,7 @@ class _VaultListScreenState extends ConsumerState<VaultListScreen> {
         ),
       ),
       const SliverToBoxAdapter(child: _NotifyTrigger()),
-      const SliverToBoxAdapter(child: _UpdateBannerCard()),
+      if (!storeBuild) const SliverToBoxAdapter(child: _UpdateBannerCard()),
       if (banner != null)
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(

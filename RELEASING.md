@@ -40,6 +40,23 @@ to debug signing unless you create your own `android/key.properties`.
 > ⚠️ Keep the keystore and its password backed up somewhere safe. Losing them
 > means you can never ship an update that installs over an existing release build.
 
+## Store builds
+
+F-Droid and IzzyOnDroid ship their own updates, so their builds leave out
+Vaultly's GitHub update check:
+
+```sh
+flutter build apk --release --dart-define=OFFLYNE_STORE=fdroid
+```
+
+With `OFFLYNE_STORE` set, the update check never runs and the *Updates*
+section in Settings and the home-screen update banner are not built. Without
+it (the GitHub Release APKs above) the update check is present. Store
+listing text, icon, feature graphic, screenshots and per-version changelogs
+live in `fastlane/metadata/android/en-US/`; add
+`changelogs/<versionCode>.txt` for every release (the `+N` in
+`pubspec.yaml`'s `version:`).
+
 ## Versioning
 
 Tags are `vMAJOR.MINOR.PATCH` and should match the `version:` in `pubspec.yaml`.

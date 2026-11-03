@@ -253,9 +253,11 @@ class SettingsScreen extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: AppSpacing.lg),
-                  const SectionHeader(title: 'Updates'),
-                  const _UpdateSection(),
+                  if (!storeBuild) ...[
+                    const SizedBox(height: AppSpacing.lg),
+                    const SectionHeader(title: 'Updates'),
+                    const _UpdateSection(),
+                  ],
                   const SizedBox(height: AppSpacing.lg),
                   const SectionHeader(title: 'Danger zone'),
                   RowGroup(
@@ -331,9 +333,11 @@ class _About extends ConsumerWidget {
           constraints: const BoxConstraints(maxWidth: 320),
           child: Text(
             'Your passwords are stored only on your devices, protected '
-            'by encryption. Network use is limited to the optional update '
-            'check and, when you sync, the encrypted link between your '
-            'paired devices on the same Wi-Fi.',
+            'by encryption. Network use is limited to '
+            '${storeBuild ? '' : 'the optional update check, '}reading a '
+            "website's public app-link file when an app asks for a passkey "
+            'and, when you sync, the encrypted link between your paired '
+            'devices on the same Wi-Fi.',
             textAlign: TextAlign.center,
             style: AppTextStyles.bodySmall.copyWith(color: c.textSecondary),
           ),
@@ -346,7 +350,7 @@ class _About extends ConsumerWidget {
 }
 
 /// "Check for updates on open" toggle + a manual "Check now", backed by
-/// core_update. On by default; the only network call the app makes.
+/// core_update. On by default. Absent from store builds.
 class _UpdateSection extends ConsumerStatefulWidget {
   const _UpdateSection();
 

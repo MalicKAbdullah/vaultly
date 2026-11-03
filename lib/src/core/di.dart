@@ -142,6 +142,11 @@ final autoBackupServiceProvider = Provider<AutoBackupService>(
 
 // -- In-app update (core_update) ------------------------------------------
 
+/// Set for app-store builds (`--dart-define=OFFLYNE_STORE=fdroid`), whose
+/// store delivers updates: the GitHub update check never runs and its
+/// Settings section and home banner are not built.
+const bool storeBuild = bool.hasEnvironment('OFFLYNE_STORE');
+
 /// Secure-storage key for the auto-check preference.
 const String updateAutoCheckKey = 'vaultkey_update_autocheck';
 
@@ -156,8 +161,10 @@ final updateAutoCheckProvider = FutureProvider<bool>(
       'false',
 );
 
-/// The pending update (null when disabled, up to date, or offline).
+/// The pending update (null in store builds, or when disabled, up to date,
+/// or offline).
 final updateCheckProvider = FutureProvider<UpdateInfo?>((ref) async {
+  if (storeBuild) return null;
   if (!await ref.watch(updateAutoCheckProvider.future)) return null;
   return ref.watch(updateServiceProvider).check();
 });

@@ -1,0 +1,3 @@
+* Faster unlock: the vault opens sooner and the list loads lazily
+* Safer file handling after a password reset
+* The "Open site" button fits on narrow screens and with large text

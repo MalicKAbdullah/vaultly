@@ -145,7 +145,7 @@ guarantee every copy of a string is wiped.
 
 ## 🔒 Privacy & Security
 
-- **Offline-first.** The network is used only for the optional update check; when an Android *app* (not a website) asks for a passkey, to download that site's public Digital Asset Links file; and, when you sync, for the encrypted link between your own paired devices on your Wi-Fi.
+- **Offline-first.** The network is used only for the optional update check (GitHub builds only); when an Android *app* (not a website) asks for a passkey, to download that site's public Digital Asset Links file; and, when you sync, for the encrypted link between your own paired devices on your Wi-Fi.
 - **Unlocked by you.** Your data key is derived from your master password with **Argon2id** (brute-force-resistant), held only in memory while unlocked and wiped on lock.
 - **Encrypted at rest.** The vault is stored as a single file encrypted with **AES-256-GCM**.
 - **Your backups, your key.** Backups are encrypted with a separate passphrase — a backup file alone is useless to anyone else.
@@ -178,6 +178,18 @@ flutter run
 ```sh
 flutter build apk --release
 ```
+
+**Build for an app store (F-Droid, IzzyOnDroid):**
+
+```sh
+flutter build apk --release --dart-define=OFFLYNE_STORE=fdroid
+```
+
+`OFFLYNE_STORE` marks a store build, where the store delivers updates: the
+GitHub update check never runs, and the *Updates* section in Settings and the
+update banner on the home screen are left out. Without the flag you get the
+GitHub build, which checks GitHub Releases for a newer version (on by default,
+switchable in Settings).
 
 Run the checks the way CI does:
 
