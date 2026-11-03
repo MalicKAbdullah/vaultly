@@ -1,7 +1,7 @@
 import 'package:core_theme/core_theme.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:flutter_zxing/flutter_zxing.dart';
 import 'package:vaultkey/src/features/importers/models/imported_item.dart';
 import 'package:vaultkey/src/features/importers/parsers/otpauth_migration.dart';
 import 'package:vaultkey/src/features/importers/screens/import_preview_screen.dart';
@@ -18,19 +18,9 @@ class MigrationScanScreen extends StatefulWidget {
 }
 
 class _MigrationScanScreenState extends State<MigrationScanScreen> {
-  final _controller = MobileScannerController(
-    formats: const [BarcodeFormat.qrCode],
-  );
-
   /// Scanned codes by (batch id, index), so a code seen twice counts once.
   final _batches = <(int, int), MigrationBatch>{};
   String? _error;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
 
   int get _expected {
     final sizes = <int, int>{
@@ -41,11 +31,11 @@ class _MigrationScanScreenState extends State<MigrationScanScreen> {
 
   bool get _complete => _batches.isNotEmpty && _batches.length >= _expected;
 
-  void _accept(Iterable<Barcode> codes) {
+  void _accept(Iterable<Code> codes) {
     var added = false;
     for (final code in codes) {
-      final raw = code.rawValue;
-      if (raw == null) continue;
+      final raw = code.text;
+      if (!code.isValid || raw == null) continue;
       if (!OtpauthMigration.looksLikeMigration(raw)) {
         setState(() => _error = 'That is not a Google Authenticator export '
             'code. In Authenticator, choose Transfer accounts → Export.');
@@ -68,18 +58,20 @@ class _MigrationScanScreenState extends State<MigrationScanScreen> {
   }
 
   Future<void> _pickImage() async {
-    final capture = await ImportFiles.withPickedImage(
-      (path) => _controller.analyzeImage(
+    final code = await ImportFiles.withPickedImage(
+      (path) => zx.readBarcodeImagePathString(
         path,
-        formats: const [BarcodeFormat.qrCode],
+        // Export codes are dense; decoding at the default 768 px loses them
+        // in full-resolution screenshots.
+        DecodeParams(format: Format.qrCode, tryHarder: true, maxSize: 2048),
       ),
     );
     if (!mounted) return;
-    if (capture == null || capture.barcodes.isEmpty) {
+    if (code == null || !code.isValid) {
       setState(() => _error = 'No QR code found in that image.');
       return;
     }
-    _accept(capture.barcodes);
+    _accept([code]);
   }
 
   void _review() {
@@ -94,7 +86,6 @@ class _MigrationScanScreenState extends State<MigrationScanScreen> {
       ],
       warnings: [for (final e in ordered) ...e.value.warnings],
     );
-    _controller.stop();
     Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
         builder: (_) => ImportPreviewScreen(batch: batch),
@@ -127,9 +118,12 @@ class _MigrationScanScreenState extends State<MigrationScanScreen> {
             borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
             child: AspectRatio(
               aspectRatio: 1,
-              child: MobileScanner(
-                controller: _controller,
-                onDetect: (capture) => _accept(capture.barcodes),
+              child: ReaderWidget(
+                codeFormat: Format.qrCode,
+                showGallery: false,
+                showToggleCamera: false,
+                scanDelay: const Duration(milliseconds: 300),
+                onScan: (code) => _accept([code]),
               ),
             ),
           ),
