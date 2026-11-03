@@ -1,0 +1,37 @@
+Vaultly is a password manager you actually own. Your vault is encrypted on your phone and never goes to a server: there is no account, no cloud, no ads and no trackers.
+
+<b>Unlock and fill</b>
+* One master password, with optional fingerprint or face unlock
+* Android Autofill for apps and for websites in your browser
+* Passkeys (Android 14+): websites and apps save passkeys in Vaultly and sign you in with them; saved passwords appear in the same sign-in sheet
+* Built-in two-factor (TOTP) codes next to your passwords
+
+<b>Everything organised</b>
+* Logins, cards, notes and identities, with favorites and per-entry password history
+* Instant search, filters and sorting
+* A strong password generator with a live strength meter
+
+<b>Stay secure</b>
+* Vault Health flags weak, reused and old passwords
+* Copied passwords clear from the clipboard after 30 seconds
+* Screenshot protection and auto-lock
+* A recovery key lets you back in if you forget your master password
+
+<b>Never lose access</b>
+* Encrypted backup and restore you can export anywhere
+* Scheduled auto-backup to any folder you choose
+
+<b>Move in, stay in step</b>
+* Import from Chrome / Google Password Manager, Bitwarden (JSON or CSV), 1Password (.1pux or CSV), any CSV, and Google Authenticator transfer QR codes (camera or screenshot)
+* Phone-to-phone sync over your own Wi-Fi: pair once with a QR code, then both devices merge their changes directly, end-to-end encrypted, with no server
+
+<b>How it protects you</b>
+Your data key is derived from your master password with Argon2id and the vault is stored encrypted with AES-256-GCM. Backups are encrypted with their own passphrase.
+
+<b>Network use</b>
+Vaultly works offline. It uses the network only:
+* when an Android app (not a website) asks for a passkey, to download that site's public Digital Asset Links file (https://&lt;site&gt;/.well-known/assetlinks.json) and check the app is allowed;
+* when you sync, for the encrypted link between your own paired devices on the same Wi-Fi;
+* in the GitHub release build only, for the optional update check against GitHub Releases (on by default, can be switched off in Settings). The F-Droid build leaves this check out.
+
+Vaultly is free and open source under the MIT license.
