@@ -1,6 +1,6 @@
 name: vaultkey
 description: Vaultly — an offline, encrypted password manager with vault health insights and scheduled backups.
-version: 1.9.0+12
+version: 1.10.0+13
 publish_to: none
 
 environment:
@@ -55,42 +55,42 @@ dependencies:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_crypto
-      ref: 3e90d1221ef1e4010748944c83459df13d18c205
+      ref: be869646b86d9654a83fe8194d69d9acbe28fd7d
   core_storage:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_storage
-      ref: 3e90d1221ef1e4010748944c83459df13d18c205
+      ref: be869646b86d9654a83fe8194d69d9acbe28fd7d
   core_theme:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_theme
-      ref: 3e90d1221ef1e4010748944c83459df13d18c205
+      ref: be869646b86d9654a83fe8194d69d9acbe28fd7d
   core_ui:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_ui
-      ref: 3e90d1221ef1e4010748944c83459df13d18c205
+      ref: be869646b86d9654a83fe8194d69d9acbe28fd7d
   core_lock:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_lock
-      ref: 3e90d1221ef1e4010748944c83459df13d18c205
+      ref: be869646b86d9654a83fe8194d69d9acbe28fd7d
   core_backup:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_backup
-      ref: 3e90d1221ef1e4010748944c83459df13d18c205
+      ref: be869646b86d9654a83fe8194d69d9acbe28fd7d
   core_notify:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_notify
-      ref: 3e90d1221ef1e4010748944c83459df13d18c205
+      ref: be869646b86d9654a83fe8194d69d9acbe28fd7d
   core_update:
     git:
       url: https://github.com/MalicKAbdullah/secure-suite-core.git
       path: core_update
-      ref: 3e90d1221ef1e4010748944c83459df13d18c205
+      ref: be869646b86d9654a83fe8194d69d9acbe28fd7d
 dev_dependencies:
   flutter_test:
     sdk: flutter
