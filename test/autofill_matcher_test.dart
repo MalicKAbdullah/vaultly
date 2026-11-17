@@ -107,84 +107,31 @@ void main() {
     });
   });
 
-  group('AutofillMatcher.score — browser web forms', () {
-    // A login form inside Chrome: the package is the browser, the real
-    // signal is the reported web domain.
-    test('a browser request matches on the web domain, not the package', () {
-      const request = AutofillFillRequest(
-        domain: 'github.com',
-        package: 'com.android.chrome',
-      );
+  group('AutofillMatcher.score — trusted-browser web forms', () {
+    // A page in a trusted browser arrives as its host alone; the browser's
+    // package is never part of the request.
+    test('a web request matches on the host', () {
+      const request = AutofillFillRequest(domain: 'github.com');
       expect(
         AutofillMatcher.score(makeEntry(url: 'github.com'), request),
         100,
       );
     });
 
-    test('the browser package itself never matches a vault entry', () {
-      // Entry that happens to look like a browser must not match just
-      // because the request came from that browser.
-      const request = AutofillFillRequest(package: 'com.android.chrome');
-      expect(
-        AutofillMatcher.score(
-          makeEntry(title: 'Chrome tips', url: 'chrome.example'),
-          request,
-        ),
-        0,
-      );
-    });
-
-    test('a Firefox request with no domain does not match on the package', () {
-      const request = AutofillFillRequest(package: 'org.mozilla.firefox');
-      expect(
-        AutofillMatcher.score(
-          makeEntry(title: 'Mozilla account', url: 'mozilla.example'),
-          request,
-        ),
-        0,
-      );
-    });
-
-    test('anything whose package contains "browser" is treated as a browser',
-        () {
-      const request = AutofillFillRequest(
-        package: 'com.some.unknownbrowser',
-        domain: 'example.com',
-      );
-      // Domain still drives the match; the browser package adds nothing.
-      expect(
-        AutofillMatcher.score(makeEntry(url: 'example.com'), request),
-        100,
-      );
-      expect(
-        AutofillMatcher.score(
-          makeEntry(title: 'unknownbrowser notes', url: ''),
-          const AutofillFillRequest(package: 'com.some.unknownbrowser'),
-        ),
-        0,
-      );
-    });
-
     test('a subdomain web form still ranks against the base entry', () {
-      const request = AutofillFillRequest(
-        domain: 'accounts.google.com',
-        package: 'com.android.chrome',
-      );
+      const request = AutofillFillRequest(domain: 'accounts.google.com');
       expect(
         AutofillMatcher.score(makeEntry(url: 'google.com'), request),
         80,
       );
     });
 
-    test('rank picks the domain-matching entry for a browser request', () {
+    test('rank picks the host-matching entry for a web request', () {
       final gh = makeEntry(id: 'gh', title: 'GitHub', url: 'github.com');
       final bank = makeEntry(id: 'bank', title: 'Bank', url: 'bank.example');
       final ranked = AutofillMatcher.rank(
         [bank, gh],
-        const AutofillFillRequest(
-          domain: 'github.com',
-          package: 'com.android.chrome',
-        ),
+        const AutofillFillRequest(domain: 'github.com'),
       );
       expect(ranked.map((e) => e.id), ['gh']);
     });
