@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:vaultkey/src/features/totp/models/totp_config.dart';
+import 'package:vaultkey/src/features/vault/models/card_details.dart';
+import 'package:vaultkey/src/features/vault/models/identity_details.dart';
 import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
 
 /// Where an import came from. Drives the labels on the preview screen.
@@ -30,6 +32,8 @@ final class ImportedItem {
     this.category = EntryCategory.login,
     this.favorite = false,
     this.totp,
+    this.card,
+    this.identity,
   });
 
   final String title;
@@ -40,6 +44,16 @@ final class ImportedItem {
   final EntryCategory category;
   final bool favorite;
   final TotpConfig? totp;
+  final CardDetails? card;
+  final IdentityDetails? identity;
+
+  /// What tells this item apart from others with the same title: the
+  /// username, else the card number, else the identity's email or name.
+  String get account => [
+        username,
+        if (card != null) card!.number,
+        if (identity != null) ...[identity!.email, identity!.fullName],
+      ].firstWhere((s) => s.isNotEmpty, orElse: () => '');
 
   VaultEntry toEntry({required String id, required DateTime now}) => VaultEntry(
         id: id,
@@ -51,6 +65,8 @@ final class ImportedItem {
         category: category,
         favorite: favorite,
         totp: totp,
+        card: card,
+        identity: identity,
         createdAt: now,
         updatedAt: now,
         passwordChangedAt: now,
@@ -66,11 +82,13 @@ final class ImportedItem {
       other.notes == notes &&
       other.category == category &&
       other.favorite == favorite &&
-      other.totp == totp;
+      other.totp == totp &&
+      other.card == card &&
+      other.identity == identity;
 
   @override
-  int get hashCode => Object.hash(
-      title, username, password, url, notes, category, favorite, totp);
+  int get hashCode => Object.hash(title, username, password, url, notes,
+      category, favorite, totp, card, identity);
 }
 
 /// A two-factor account from an authenticator export: no password, only the

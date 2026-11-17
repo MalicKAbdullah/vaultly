@@ -6,6 +6,8 @@ import 'package:vaultkey/src/features/importers/models/imported_item.dart';
 import 'package:vaultkey/src/features/importers/parsers/csv_importers.dart';
 import 'package:vaultkey/src/features/importers/parsers/import_text.dart';
 import 'package:vaultkey/src/features/totp/models/totp_config.dart';
+import 'package:vaultkey/src/features/vault/models/card_details.dart';
+import 'package:vaultkey/src/features/vault/models/identity_details.dart';
 import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
 
 /// 1Password's `.1pux` export: a zip whose `export.data` is a JSON tree of
@@ -114,6 +116,8 @@ abstract final class OnePuxImporter {
 
     TotpConfig? totp;
     final lines = <String, String>{};
+    final card = <String, String>{};
+    final person = <String, String>{};
     for (final section
         in (details['sections'] as List? ?? const []).whereType<Map>()) {
       for (final field
@@ -133,17 +137,32 @@ abstract final class OnePuxImporter {
               itemName: title, warnings: warnings);
           continue;
         }
-        if (category == _creditCard && id == 'ccnum' && password.isEmpty) {
-          password = text;
-          continue;
+        if (category == _creditCard) {
+          final slot = switch (id) {
+            'ccnum' => 'number',
+            'cardholder' => 'holder',
+            'cvv' => 'cvc',
+            'expiry' when kind == 'monthYear' => 'expiry',
+            _ => null,
+          };
+          if (slot != null && !card.containsKey(slot)) {
+            card[slot] = text;
+            continue;
+          }
         }
-        if (category == _creditCard && id == 'cardholder' && username.isEmpty) {
-          username = text;
-          continue;
-        }
-        if (category == _identity && kind == 'email' && username.isEmpty) {
-          username = text;
-          continue;
+        if (category == _identity) {
+          final slot = switch ((id, kind)) {
+            ('firstname' || 'initial' || 'lastname', _) => id,
+            (_, 'email') => 'email',
+            (_, 'phone') => 'phone',
+            (_, 'address') => 'address',
+            _ => null,
+          };
+          if (slot != null && !person.containsKey(slot)) {
+            person[slot] = text;
+            if (slot == 'address') _address(value[kind], person);
+            continue;
+          }
         }
         if (kind == 'concealed' && password.isEmpty && id == 'password') {
           password = text;
@@ -157,6 +176,9 @@ abstract final class OnePuxImporter {
       }
     }
 
+    // An expiry Vaultly cannot read is kept as text, not lost.
+    final expiry = CardDetails.parseExpiry(card['expiry'] ?? '');
+    if (expiry == null) lines['Expires'] = card['expiry']!;
     final tags = (overview['tags'] as List? ?? const []).join(', ');
     return ImportedItem(
       title: title,
@@ -182,10 +204,43 @@ abstract final class OnePuxImporter {
       },
       favorite: (raw['favIndex'] as num? ?? 0) > 0,
       totp: totp,
+      card: category == _creditCard
+          ? CardDetails(
+              holder: card['holder'] ?? '',
+              number: CardDetails.digitsOf(card['number'] ?? ''),
+              expMonth: expiry == null ? '' : expiry.month,
+              expYear: expiry == null ? '' : expiry.year,
+              cvc: card['cvc'] ?? '',
+            )
+          : null,
+      identity: category == _identity
+          ? IdentityDetails(
+              fullName: [
+                for (final part in const ['firstname', 'initial', 'lastname'])
+                  if (person[part] != null) person[part]!,
+              ].join(' '),
+              email: person['email'] ?? '',
+              phone: person['phone'] ?? '',
+              address1: person['street'] ?? '',
+              city: person['city'] ?? '',
+              region: person['state'] ?? '',
+              postalCode: person['zip'] ?? '',
+              country: person['country'] ?? '',
+            )
+          : null,
     );
   }
 
   static String _s(Object? v) => v == null ? '' : v.toString().trim();
+
+  /// Copies the parts of a structured `address` value into [into].
+  static void _address(Object? v, Map<String, String> into) {
+    if (v is! Map) return;
+    for (final part in const ['street', 'city', 'state', 'zip', 'country']) {
+      final text = _s(v[part]);
+      if (text.isNotEmpty) into[part] = text;
+    }
+  }
 
   /// Renders one typed section value (`{"string": ...}`, `{"address":
   /// {...}}`, `{"monthYear": 202512}`, ...) as display text.

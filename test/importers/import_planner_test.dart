@@ -2,6 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vaultkey/src/features/importers/models/imported_item.dart';
 import 'package:vaultkey/src/features/importers/services/import_planner.dart';
 import 'package:vaultkey/src/features/totp/models/totp_config.dart';
+import 'package:vaultkey/src/features/vault/models/card_details.dart';
+import 'package:vaultkey/src/features/vault/models/identity_details.dart';
 import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
 
 import '../fakes/fakes.dart';
@@ -58,6 +60,64 @@ void main() {
       );
       expect(o.duplicates, isEmpty);
       expect(o.added, 1);
+    });
+
+    test('two cards with the same title but different numbers are kept', () {
+      final o = run(
+        [
+          const ImportedItem(
+            title: 'Visa',
+            category: EntryCategory.card,
+            card: CardDetails(number: '4111111111111111'),
+          ),
+          const ImportedItem(
+            title: 'Visa',
+            category: EntryCategory.card,
+            card: CardDetails(number: '4242424242424242'),
+          ),
+        ],
+        current: const [],
+      );
+      expect(o.duplicates, isEmpty);
+      expect(o.added, 2);
+    });
+
+    test('the same card again is a duplicate, and merge fills the gaps', () {
+      const card = CardDetails(number: '4111111111111111', cvc: '123');
+      final o = run(
+        [
+          const ImportedItem(
+            title: 'Visa',
+            category: EntryCategory.card,
+            card: card,
+          ),
+        ],
+        current: [
+          makeEntry(
+            id: 'v',
+            title: 'Visa',
+            username: '',
+            url: '',
+            category: EntryCategory.card,
+            card: card,
+          ),
+        ],
+      );
+      expect(o.duplicates.single.existing.id, 'v');
+    });
+
+    test('merge adds an imported identity to an entry without one', () {
+      const identity = IdentityDetails(fullName: 'Jo', email: 'jo@x.example');
+      final merged = ImportPlanner.mergeInto(
+        makeEntry(username: 'jo@x.example'),
+        const ImportedItem(
+          title: 'Example',
+          username: 'jo@x.example',
+          identity: identity,
+        ),
+        DateTime(2026, 7, 5),
+      );
+      expect(merged.identity, identity);
     });
 
     test('falls back to the title when there is no URL', () {

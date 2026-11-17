@@ -3,6 +3,9 @@ import 'package:vaultkey/src/features/backup/services/csv_codec.dart';
 import 'package:vaultkey/src/features/importers/models/imported_item.dart';
 import 'package:vaultkey/src/features/importers/parsers/import_detector.dart';
 import 'package:vaultkey/src/features/totp/models/totp_config.dart';
+import 'package:vaultkey/src/features/vault/models/card_details.dart';
+import 'package:vaultkey/src/features/vault/models/identity_details.dart';
+import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
 
 import 'fakes/fakes.dart';
 
@@ -37,6 +40,41 @@ void main() {
   });
 
   group('CsvCodec export round-trip', () {
+    test('card and identity details travel in the note column', () {
+      final csv = CsvCodec.export([
+        makeEntry(
+          title: 'Visa',
+          username: '',
+          password: '',
+          url: '',
+          category: EntryCategory.card,
+          notes: 'Main card',
+          card: const CardDetails(
+            holder: 'Jo',
+            number: '4242424242424242',
+            expMonth: '07',
+            expYear: '2030',
+            cvc: '123',
+          ),
+        ),
+        makeEntry(
+          title: 'Home',
+          username: '',
+          password: '',
+          url: '',
+          category: EntryCategory.identity,
+          identity: const IdentityDetails(fullName: 'Jo', city: 'Leeds'),
+        ),
+      ]);
+      final notes = reimport(csv).items.map((i) => i.notes).toList();
+      expect(
+        notes[0],
+        'Cardholder: Jo\nCard number: 4242424242424242\nExpires: 07/30\n'
+        'Security code: 123\n\nMain card',
+      );
+      expect(notes[1], 'Name: Jo\nAddress: Leeds');
+    });
+
     test('export → import keeps the two-factor secret', () {
       final entries = [
         makeEntry(

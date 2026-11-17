@@ -9,6 +9,8 @@ abstract final class CsvCodec {
   /// Two-factor secrets travel as otpauth URIs so other managers import
   /// them with their parameters intact. Passkeys are left out: a private
   /// key never leaves Vaultly unencrypted, and CSV has no column for one.
+  /// Card and identity details have no column either; they go in the note
+  /// as `Label: value` lines, which every manager keeps.
   static String export(List<VaultEntry> entries) {
     final buffer = StringBuffer('name,url,username,password,note,totp\r\n');
     for (final e in entries) {
@@ -17,13 +19,25 @@ abstract final class CsvCodec {
           ? ''
           : OtpauthParser.toUri(e.totp!, issuer: e.title, account: e.username);
       buffer.write(
-        [e.title, e.url, e.username, e.password, e.notes, totp]
+        [e.title, e.url, e.username, e.password, _note(e), totp]
             .map(_escape)
             .join(','),
       );
       buffer.write('\r\n');
     }
     return buffer.toString();
+  }
+
+  static String _note(VaultEntry e) {
+    final lines = [
+      for (final fields in [
+        if (e.card != null) e.card!.labelledFields,
+        if (e.identity != null) e.identity!.labelledFields,
+      ])
+        for (final f in fields.entries)
+          if (f.value.isNotEmpty) '${f.key}: ${f.value}',
+    ].join('\n');
+    return [lines, e.notes].where((p) => p.isNotEmpty).join('\n\n');
   }
 
   static String _escape(String value) {
