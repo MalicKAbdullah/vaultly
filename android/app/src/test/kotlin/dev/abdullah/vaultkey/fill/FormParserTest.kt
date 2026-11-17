@@ -1,0 +1,96 @@
+package dev.abdullah.vaultkey.fill
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Test
+
+class FormParserTest {
+
+    private fun parse(fixture: String) = FormParser.parse(JsonFieldNode.fixture(fixture))
+
+    private fun ParsedForm<JsonFieldNode>.usernameLabels() = usernames.map { it.label }
+    private fun ParsedForm<JsonFieldNode>.passwordLabels() = passwords.map { it.label }
+
+    @Test
+    fun `Google email page`() {
+        val form = parse("google_email")
+        assertEquals(listOf("identifier"), form.usernameLabels())
+        assertEquals(listOf("hiddenPassword"), form.passwordLabels())
+        assertEquals("accounts.google.com", form.webDomain)
+    }
+
+    @Test
+    fun `Google password page keeps the hidden username field`() {
+        val form = parse("google_password")
+        assertEquals(listOf("identifier"), form.usernameLabels())
+        assertEquals(listOf("Passwd"), form.passwordLabels())
+    }
+
+    @Test
+    fun `Microsoft email then password pages`() {
+        assertEquals(listOf("loginfmt"), parse("microsoft_email").usernameLabels())
+        val password = parse("microsoft_password")
+        assertEquals(listOf("passwd"), password.passwordLabels())
+        assertEquals("login.live.com", password.webDomain)
+    }
+
+    @Test
+    fun `GitHub login`() {
+        val form = parse("github_login")
+        assertEquals(listOf("login"), form.usernameLabels())
+        assertEquals(listOf("password"), form.passwordLabels())
+    }
+
+    @Test
+    fun `Amazon sign-in reports the host without www`() {
+        val form = parse("amazon_signin")
+        assertEquals(listOf("email"), form.usernameLabels())
+        assertEquals(listOf("password"), form.passwordLabels())
+        assertEquals("amazon.com", form.webDomain)
+    }
+
+    @Test
+    fun `sign-up with new and confirm password`() {
+        val form = parse("signup")
+        assertEquals(listOf("new_username"), form.usernameLabels())
+        assertEquals(listOf("new_password", "confirm_password"), form.passwordLabels())
+    }
+
+    @Test
+    fun `shipping address fields are not passwords`() {
+        val form = parse("shipping_address")
+        assertEquals(emptyList<String>(), form.passwordLabels())
+        assertEquals(emptyList<String>(), form.usernameLabels())
+        assertFalse(form.isFillable)
+    }
+
+    @Test
+    fun `keywords count as whole words`() {
+        val form = parse("keyword_only_login")
+        assertEquals(listOf("user_name"), form.usernameLabels())
+        assertEquals(listOf("pin"), form.passwordLabels())
+    }
+
+    @Test
+    fun `native app with autofill hints`() {
+        val form = parse("native_app_login")
+        assertEquals(listOf("email"), form.usernameLabels())
+        assertEquals(listOf("password"), form.passwordLabels())
+        assertNull(form.webDomain)
+    }
+
+    @Test
+    fun `a WebView's domain is reported as parsed, trust is decided elsewhere`() {
+        assertEquals("accounts.google.com", parse("webview_claiming_domain").webDomain)
+    }
+
+    @Test
+    fun `words split on punctuation, camelCase and digits`() {
+        assertEquals(listOf("shipping", "address"), FormParser.words("shipping_address"))
+        assertEquals(listOf("user", "name", "2"), FormParser.words("userName2"))
+        assertEquals(listOf("identifier", "id"), FormParser.words("identifierId"))
+        assertEquals(listOf("enter", "your", "password"), FormParser.words("Enter your password"))
+        assertEquals(emptyList<String>(), FormParser.words(null))
+    }
+}

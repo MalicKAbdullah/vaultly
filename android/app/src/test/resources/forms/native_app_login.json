@@ -1,0 +1,28 @@
+{
+ "roots": [
+  {
+   "id": "content",
+   "children": [
+    {
+     "id": "email",
+     "hints": [
+      "emailAddress"
+     ],
+     "inputType": 33,
+     "text": true
+    },
+    {
+     "id": "password",
+     "hints": [
+      "password"
+     ],
+     "inputType": 129,
+     "text": true
+    },
+    {
+     "id": "remember_me"
+    }
+   ]
+  }
+ ]
+}

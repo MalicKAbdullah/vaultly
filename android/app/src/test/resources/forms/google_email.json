@@ -1,0 +1,33 @@
+{
+ "roots": [
+  {
+   "id": "content",
+   "children": [
+    {
+     "domain": "accounts.google.com",
+     "children": [
+      {
+       "input": {
+        "type": "email",
+        "name": "identifier",
+        "id": "identifierId",
+        "autocomplete": "username webauthn"
+       },
+       "text": true,
+       "domain": "accounts.google.com"
+      },
+      {
+       "input": {
+        "type": "password",
+        "name": "hiddenPassword",
+        "autocomplete": "off"
+       },
+       "text": true,
+       "domain": "accounts.google.com"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

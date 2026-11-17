@@ -1,0 +1,47 @@
+{
+ "roots": [
+  {
+   "id": "content",
+   "children": [
+    {
+     "domain": "shop.example",
+     "children": [
+      {
+       "input": {
+        "type": "text",
+        "name": "shipping_address",
+        "id": "shippingAddress"
+       },
+       "text": true,
+       "domain": "shop.example"
+      },
+      {
+       "input": {
+        "type": "text",
+        "name": "shipping_city"
+       },
+       "text": true,
+       "domain": "shop.example"
+      },
+      {
+       "input": {
+        "type": "text",
+        "name": "shipping_postal_code"
+       },
+       "text": true,
+       "domain": "shop.example"
+      },
+      {
+       "input": {
+        "type": "text",
+        "name": "spinner_choice"
+       },
+       "text": true,
+       "domain": "shop.example"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,32 @@
+{
+ "roots": [
+  {
+   "id": "content",
+   "children": [
+    {
+     "domain": "www.amazon.com",
+     "children": [
+      {
+       "input": {
+        "type": "email",
+        "name": "email",
+        "id": "ap_email"
+       },
+       "text": true,
+       "domain": "www.amazon.com"
+      },
+      {
+       "input": {
+        "type": "password",
+        "name": "password",
+        "id": "ap_password"
+       },
+       "text": true,
+       "domain": "www.amazon.com"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

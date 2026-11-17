@@ -1,0 +1,31 @@
+{
+ "roots": [
+  {
+   "id": "content",
+   "children": [
+    {
+     "id": "webview",
+     "domain": "accounts.google.com",
+     "children": [
+      {
+       "input": {
+        "type": "email",
+        "name": "identifier"
+       },
+       "text": true,
+       "domain": "accounts.google.com"
+      },
+      {
+       "input": {
+        "type": "password",
+        "name": "Passwd"
+       },
+       "text": true,
+       "domain": "accounts.google.com"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,24 @@
+{
+ "roots": [
+  {
+   "id": "content",
+   "children": [
+    {
+     "domain": "login.live.com",
+     "children": [
+      {
+       "input": {
+        "type": "email",
+        "name": "loginfmt",
+        "id": "i0116",
+        "autocomplete": "username"
+       },
+       "text": true,
+       "domain": "login.live.com"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}
