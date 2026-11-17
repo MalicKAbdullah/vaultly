@@ -6,16 +6,6 @@ import 'package:vaultkey/src/core/background_worker.dart';
 import 'package:vaultkey/src/core/interfaces/vault_file_store.dart';
 import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
 
-/// The encrypted vault file as read, tagged with the [VaultFile.generation]
-/// it was read at.
-final class StoredVault {
-  const StoredVault({required this.payload, required this.generation});
-
-  /// Null when no vault file exists yet.
-  final EncryptedPayload? payload;
-  final int generation;
-}
-
 /// Persists the vault as one AES-GCM-encrypted JSON document.
 ///
 /// The whole entry list is serialized, encrypted with the session vault key,
@@ -41,20 +31,33 @@ final class VaultRepository {
 
   static const int _formatVersion = 1;
 
-  /// The encrypted vault as stored now.
-  Future<StoredVault> readPayload() async {
-    final read = await _file.readVersioned();
-    final bytes = read.bytes;
-    return StoredVault(
-      payload: bytes == null ? null : EncryptedPayload.fromBytes(bytes),
-      generation: read.generation,
-    );
+  /// The encrypted vault as stored now; null when no vault file exists.
+  Future<EncryptedPayload?> readPayload() async {
+    final bytes = await _file.read();
+    return bytes == null ? null : EncryptedPayload.fromBytes(bytes);
   }
 
-  /// [read] when nothing has been queued to write the file since; otherwise
-  /// the file read again, after those writes.
-  Future<StoredVault> current(StoredVault read) =>
-      read.generation == _file.generation ? Future.value(read) : readPayload();
+  /// [read] when the file still holds it; otherwise the file read again.
+  ///
+  /// Any engine in the process may have replaced the file since [read], so
+  /// the file itself is asked, not this engine's queue. Its salt and nonce
+  /// identify one write: every encryption draws a fresh random nonce, so
+  /// the same head means the same ciphertext.
+  Future<EncryptedPayload?> current(EncryptedPayload? read) async {
+    final head = await _file.readHead(CryptoPayloadLayout.nonceEnd);
+    if (read == null ? head == null : _isHeadOf(head, read)) return read;
+    return readPayload();
+  }
+
+  static bool _isHeadOf(Uint8List? head, EncryptedPayload payload) {
+    if (head == null) return false;
+    final stored = Uint8List.fromList([...payload.salt, ...payload.nonce]);
+    if (head.length != stored.length) return false;
+    for (var i = 0; i < head.length; i++) {
+      if (head[i] != stored[i]) return false;
+    }
+    return true;
+  }
 
   /// Decrypts and parses [payload] with [key] off the UI isolate. Throws
   /// when the key does not match or the file was tampered with.
@@ -66,7 +69,7 @@ final class VaultRepository {
   }
 
   Future<List<VaultEntry>> load(Uint8List key) async =>
-      open((await readPayload()).payload, key);
+      open(await readPayload(), key);
 
   /// Queues the file write at once and encrypts on the worker meanwhile, so
   /// a read issued after this call (a lock mid-edit) sees the saved vault.

@@ -68,6 +68,12 @@ final class InMemoryFileStore implements IVaultFileStore {
   }
 
   @override
+  Future<Uint8List?> readHead(int length) async {
+    final stored = bytes;
+    return stored?.sublist(0, length < stored.length ? length : stored.length);
+  }
+
+  @override
   Future<void> write(Uint8List data) async {
     await writeGate;
     bytes = Uint8List.fromList(data);

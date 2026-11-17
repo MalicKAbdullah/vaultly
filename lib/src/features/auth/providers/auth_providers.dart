@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:core_crypto/core_crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vaultkey/src/core/di.dart';
@@ -61,10 +62,11 @@ final class SessionNotifier extends Notifier<AuthStatus> {
   Uint8List? _salt;
   bool _viaBiometric = false;
 
-  /// The vault file read ahead at launch or lock. A write queued after it
-  /// (a recovery reset re-keys the file while locked) makes [_open] read
-  /// the file again; see [VaultRepository.current].
-  late Future<StoredVault> _payload;
+  /// The vault file read ahead at launch or lock. A write after it (a
+  /// recovery reset re-keys the file while locked; another engine saves a
+  /// passkey) makes [_open] read the file again; see
+  /// [VaultRepository.current].
+  late Future<EncryptedPayload?> _payload;
 
   UnlockPrerequisites? _prerequisites;
 
@@ -283,7 +285,7 @@ final class SessionNotifier extends Notifier<AuthStatus> {
     final repository = ref.read(vaultRepositoryProvider);
     final vault = await AsyncValue.guard(() async {
       final stored = await repository.current(await _payload);
-      return repository.open(stored.payload, result.key);
+      return repository.open(stored, result.key);
     });
     StartupTimeline.mark('vault decrypted in ${timer.elapsedMilliseconds} ms');
     _adopt(result, viaBiometric: viaBiometric);

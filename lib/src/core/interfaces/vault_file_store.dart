@@ -10,6 +10,9 @@ abstract interface class IVaultFileStore {
   /// Returns the raw encrypted bytes, or null when no vault exists yet.
   Future<Uint8List?> read();
 
+  /// The first [length] bytes of the file, or null when no vault exists.
+  Future<Uint8List?> readHead(int length);
+
   Future<void> write(Uint8List bytes);
 
   Future<void> delete();
@@ -34,6 +37,22 @@ final class DocumentsVaultFileStore implements IVaultFileStore {
   }
 
   @override
+  Future<Uint8List?> readHead(int length) async {
+    final file = await _file();
+    final RandomAccessFile handle;
+    try {
+      handle = await file.open();
+    } on PathNotFoundException {
+      return null;
+    }
+    try {
+      return await handle.read(length);
+    } finally {
+      await handle.close();
+    }
+  }
+
+  @override
   Future<void> write(Uint8List bytes) async {
     final file = await _file();
     // Write to a temp file then rename for a crash-safe replace.
@@ -51,19 +70,20 @@ final class DocumentsVaultFileStore implements IVaultFileStore {
   }
 }
 
-/// The vault file as the whole app sees it: every read, write and delete in
-/// one queue, and a generation counting the writes and deletes queued so
-/// far. All code that touches the file shares the one instance
-/// (`vaultFileProvider`), so a read taken earlier can tell it is out of date
-/// and a read queued after a write sees that write.
+/// The vault file as one Flutter engine sees it: every read, write and
+/// delete in one queue, so a read queued after a write sees that write.
+/// All code in an engine that touches the file shares the one instance
+/// (`vaultFileProvider`).
+///
+/// Other engines in the process (the Credential Manager activity runs its
+/// own) have their own queue over the same file, so this queue alone cannot
+/// tell whether a read taken earlier is still current; see
+/// `VaultRepository.current`, which asks the file itself.
 final class VaultFile implements IVaultFileStore {
   VaultFile(this._store);
 
   final IVaultFileStore _store;
   Future<void> _tail = Future.value();
-  int _generation = 0;
-
-  int get generation => _generation;
 
   Future<T> _enqueue<T>(Future<T> Function() operation) {
     final result = _tail.then((_) => operation());
@@ -71,29 +91,21 @@ final class VaultFile implements IVaultFileStore {
     return result;
   }
 
-  /// The file's bytes, with the generation they belong to.
-  Future<({Uint8List? bytes, int generation})> readVersioned() {
-    final generation = _generation;
-    return _enqueue(
-      () async => (bytes: await _store.read(), generation: generation),
-    );
-  }
-
   @override
   Future<Uint8List?> read() => _enqueue(_store.read);
+
+  @override
+  Future<Uint8List?> readHead(int length) =>
+      _enqueue(() => _store.readHead(length));
 
   /// Takes the write's place in the queue now, even while [bytes] are still
   /// being produced (encrypted), so no later read can see the older file.
   @override
   Future<void> write(FutureOr<Uint8List> bytes) {
-    _generation++;
     final pending = Future.value(bytes)..ignore();
     return _enqueue(() async => _store.write(await pending));
   }
 
   @override
-  Future<void> delete() {
-    _generation++;
-    return _enqueue(_store.delete);
-  }
+  Future<void> delete() => _enqueue(_store.delete);
 }
