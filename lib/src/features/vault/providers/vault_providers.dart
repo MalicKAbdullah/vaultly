@@ -9,6 +9,8 @@ import 'package:vaultkey/src/core/di.dart';
 import 'package:vaultkey/src/features/auth/providers/auth_providers.dart';
 import 'package:vaultkey/src/features/backup/providers/backup_providers.dart';
 import 'package:vaultkey/src/features/totp/models/totp_config.dart';
+import 'package:vaultkey/src/features/vault/models/card_details.dart';
+import 'package:vaultkey/src/features/vault/models/identity_details.dart';
 import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
 
 const _uuid = Uuid();
@@ -65,6 +67,8 @@ class VaultNotifier extends AsyncNotifier<List<VaultEntry>> {
     required String notes,
     required EntryCategory category,
     TotpConfig? totp,
+    CardDetails? card,
+    IdentityDetails? identity,
     bool favorite = false,
   }) async {
     final now = _now();
@@ -78,6 +82,8 @@ class VaultNotifier extends AsyncNotifier<List<VaultEntry>> {
       category: category,
       favorite: favorite,
       totp: totp,
+      card: card,
+      identity: identity,
       createdAt: now,
       updatedAt: now,
       passwordChangedAt: now,
@@ -97,6 +103,8 @@ class VaultNotifier extends AsyncNotifier<List<VaultEntry>> {
     required String notes,
     required EntryCategory category,
     TotpConfig? totp,
+    CardDetails? card,
+    IdentityDetails? identity,
   }) async {
     final now = _now();
     await commit([
@@ -109,6 +117,8 @@ class VaultNotifier extends AsyncNotifier<List<VaultEntry>> {
                 notes: notes,
                 category: category,
                 totp: () => totp,
+                card: () => card,
+                identity: () => identity,
                 updatedAt: now,
               )
         else
