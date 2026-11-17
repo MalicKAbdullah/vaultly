@@ -11,6 +11,8 @@ import 'package:vaultkey/src/core/interfaces/vault_file_store.dart';
 import 'package:vaultkey/src/core/services/clipboard_guard.dart';
 import 'package:vaultkey/src/features/auth/services/biometric_service.dart';
 import 'package:vaultkey/src/features/totp/models/totp_config.dart';
+import 'package:vaultkey/src/features/vault/models/card_details.dart';
+import 'package:vaultkey/src/features/vault/models/identity_details.dart';
 import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
 
 /// In-memory ISecureStorage — no platform channels.
@@ -227,6 +229,8 @@ VaultEntry makeEntry({
   EntryCategory category = EntryCategory.login,
   bool favorite = false,
   TotpConfig? totp,
+  CardDetails? card,
+  IdentityDetails? identity,
   DateTime? createdAt,
   DateTime? updatedAt,
   DateTime? passwordChangedAt,
@@ -243,6 +247,8 @@ VaultEntry makeEntry({
     category: category,
     favorite: favorite,
     totp: totp,
+    card: card,
+    identity: identity,
     createdAt: created,
     updatedAt: updatedAt ?? created,
     passwordChangedAt: passwordChangedAt ?? created,

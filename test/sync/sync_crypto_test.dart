@@ -10,6 +10,8 @@ import 'package:vaultkey/src/features/sync/crypto/sync_crypto.dart';
 import 'package:vaultkey/src/features/sync/services/sync_exchange.dart';
 import 'package:vaultkey/src/features/sync/services/sync_merge.dart';
 import 'package:vaultkey/src/features/sync/services/sync_network.dart';
+import 'package:vaultkey/src/features/vault/models/card_details.dart';
+import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
 
 import '../fakes/fakes.dart';
 
@@ -386,6 +388,82 @@ void main() {
       for (final frame in pipe.wire) {
         expect(_contains(frame, utf8.encode('Only on A')), isFalse);
       }
+    });
+  });
+
+  group('SyncExchange across vault formats', () {
+    final t = DateTime.utc(2026, 10, 3);
+    final mine = SyncSnapshot(
+      entries: [makeEntry(id: 'x', updatedAt: t)],
+      tombstones: const {},
+    );
+
+    /// Plays the other phone by hand: sends [peerSnapshot] as raw JSON and
+    /// checks this phone never acknowledges it.
+    Future<void> exchangeWith(Map<String, dynamic> peerSnapshot) async {
+      final pipe = Pipe();
+      final (a, b) = await _connect(pipe);
+      final run = SyncExchange.run(a, mine);
+      await b.send(utf8.encode(jsonEncode(peerSnapshot)));
+      final sent = jsonDecode(utf8.decode(await b.receive())) as Map;
+      expect(sent['format'], 2);
+      try {
+        await run;
+      } finally {
+        final acked = await b
+            .receive(timeout: const Duration(milliseconds: 200))
+            .then((_) => true, onError: (Object _) => false);
+        expect(acked, isFalse);
+      }
+    }
+
+    test('refuses a Vaultly that sends no format (1.10 and older)', () async {
+      final old = {
+        'entries': [makeEntry(id: 'y', updatedAt: t).toJson()],
+        'tombstones': <String, String>{},
+      };
+      await expectLater(
+        exchangeWith(old),
+        throwsA(same(SyncExchange.peerTooOld)),
+      );
+    });
+
+    test('refuses a newer format without reading its entries', () async {
+      final newer = {
+        'format': 99,
+        'entries': [
+          {'id': 'y', 'shape': 'unknown to this version'},
+        ],
+        'tombstones': <String, String>{},
+      };
+      await expectLater(
+        exchangeWith(newer),
+        throwsA(same(SyncExchange.selfTooOld)),
+      );
+    });
+
+    test('two current phones keep cards when they sync', () async {
+      final pipe = Pipe();
+      final (a, b) = await _connect(pipe);
+      final withCard = SyncSnapshot(
+        entries: [
+          makeEntry(
+            id: 'c',
+            category: EntryCategory.card,
+            updatedAt: t,
+            card: const CardDetails(number: '4242424242424242', cvc: '123'),
+          ),
+        ],
+        tombstones: const {},
+      );
+      final both = await Future.wait([
+        SyncExchange.run(a, withCard),
+        SyncExchange.run(b, mine),
+      ]);
+      expect(
+        both[1].snapshot.entries.firstWhere((e) => e.id == 'c').card,
+        withCard.entries.single.card,
+      );
     });
   });
 

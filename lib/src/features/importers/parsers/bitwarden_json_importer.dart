@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:vaultkey/src/features/importers/models/imported_item.dart';
 import 'package:vaultkey/src/features/importers/parsers/csv_importers.dart';
 import 'package:vaultkey/src/features/importers/parsers/import_text.dart';
+import 'package:vaultkey/src/features/vault/models/card_details.dart';
+import 'package:vaultkey/src/features/vault/models/identity_details.dart';
 import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
 
 /// Bitwarden's unencrypted JSON export (`bitwarden_export_*.json`).
@@ -113,15 +115,25 @@ abstract final class BitwardenJsonImporter {
         final card = raw['card'] as Map<String, dynamic>? ?? const {};
         final month = str(card, 'expMonth');
         final year = str(card, 'expYear');
+        final expiry = CardDetails.normalizeExpiry(month, year);
+        final number = CardDetails.numberOf(str(card, 'number'));
         return ImportedItem(
           title: ImportText.title(name, ''),
-          username: str(card, 'cardholderName'),
-          password: str(card, 'number'),
+          card: CardDetails(
+            holder: str(card, 'cardholderName'),
+            number: number ?? '',
+            expMonth: expiry == null ? '' : expiry.month,
+            expYear: expiry == null ? '' : expiry.year,
+            cvc: str(card, 'code'),
+          ),
           notes: ImportText.joinNotes([
             ImportText.fieldLines({
               'Brand': str(card, 'brand'),
-              'Expires': [month, year].where((p) => p.isNotEmpty).join('/'),
-              'Security code': str(card, 'code'),
+              // A number Vaultly cannot read as digits is kept as text.
+              if (number == null) 'Card number': str(card, 'number'),
+              // An expiry Vaultly cannot read is kept as text, not lost.
+              if (expiry == null)
+                'Expires': [month, year].where((p) => p.isNotEmpty).join('/'),
             }),
             ...extras,
           ]),
@@ -136,28 +148,25 @@ abstract final class BitwardenJsonImporter {
           str(id, 'middleName'),
           str(id, 'lastName'),
         ].where((p) => p.isNotEmpty).join(' ');
-        final address = [
-          str(id, 'address1'),
-          str(id, 'address2'),
-          str(id, 'address3'),
-          [str(id, 'postalCode'), str(id, 'city')]
-              .where((p) => p.isNotEmpty)
-              .join(' '),
-          str(id, 'state'),
-          str(id, 'country'),
-        ].where((p) => p.isNotEmpty).join(', ');
         return ImportedItem(
           title: ImportText.title(name, ''),
-          username: str(id, 'email').isNotEmpty
-              ? str(id, 'email')
-              : str(id, 'username'),
+          username: str(id, 'username'),
+          identity: IdentityDetails(
+            fullName: fullName,
+            email: str(id, 'email'),
+            phone: str(id, 'phone'),
+            address1: str(id, 'address1'),
+            address2: [str(id, 'address2'), str(id, 'address3')]
+                .where((p) => p.isNotEmpty)
+                .join(', '),
+            city: str(id, 'city'),
+            region: str(id, 'state'),
+            postalCode: str(id, 'postalCode'),
+            country: str(id, 'country'),
+          ),
           notes: ImportText.joinNotes([
             ImportText.fieldLines({
-              'Name': fullName,
               'Company': str(id, 'company'),
-              'Phone': str(id, 'phone'),
-              'Address': address,
-              'Username': str(id, 'username'),
               'National ID': str(id, 'ssn'),
               'Passport': str(id, 'passportNumber'),
               'Licence': str(id, 'licenseNumber'),

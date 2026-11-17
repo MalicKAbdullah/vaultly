@@ -56,7 +56,10 @@ final class BackupCodec {
   final Future<String> Function() _appVersion;
 
   static const String format = 'vaultkey.backup';
-  static const int formatVersion = 1;
+
+  /// Tracks the vault format, so a Vaultly too old to keep every field
+  /// refuses the backup instead of restoring it with fields missing.
+  static const int formatVersion = VaultRepository.formatVersion;
   static const int minPassphraseLength = 8;
 
   Future<String> encode({

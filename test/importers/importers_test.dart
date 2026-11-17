@@ -3,10 +3,13 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vaultkey/src/features/importers/models/imported_item.dart';
+import 'package:vaultkey/src/features/importers/parsers/bitwarden_json_importer.dart';
 import 'package:vaultkey/src/features/importers/parsers/csv_importers.dart';
 import 'package:vaultkey/src/features/importers/parsers/import_detector.dart';
 import 'package:vaultkey/src/features/importers/parsers/onepux_importer.dart';
 import 'package:vaultkey/src/features/totp/models/totp_config.dart';
+import 'package:vaultkey/src/features/vault/models/card_details.dart';
+import 'package:vaultkey/src/features/vault/models/identity_details.dart';
 import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
 
 Uint8List fixture(String name) =>
@@ -89,22 +92,58 @@ void main() {
       expect(item.notes, 'a1b2 c3d4');
     });
 
-    test('card puts holder and number in the login fields', () {
+    test('card fills the card fields', () {
       final item = named(batch, 'Visa');
       expect(item.category, EntryCategory.card);
-      expect(item.username, 'Alice Ä. Example');
-      expect(item.password, '4111111111111111');
-      expect(item.notes, contains('Expires: 7/2030'));
-      expect(item.notes, contains('Security code: 123'));
+      expect(
+        item.card,
+        const CardDetails(
+          holder: 'Alice Ä. Example',
+          number: '4111111111111111',
+          expMonth: '07',
+          expYear: '2030',
+          cvc: '123',
+        ),
+      );
+      expect(item.username, '');
+      expect(item.password, '');
+      expect(item.notes, 'Brand: Visa');
     });
 
-    test('identity keeps the details in notes', () {
+    test('identity fills contact and address; the rest goes to notes', () {
       final item = named(batch, 'Me');
       expect(item.category, EntryCategory.identity);
-      expect(item.username, 'alice@example.com');
-      expect(item.notes, contains('Name: Ms Alice Example'));
-      expect(item.notes, contains('Address: 1 Main St, N1 1AA London, GB'));
+      expect(
+        item.identity,
+        const IdentityDetails(
+          fullName: 'Ms Alice Example',
+          email: 'alice@example.com',
+          phone: '+44 20 7946 0000',
+          address1: '1 Main St',
+          city: 'London',
+          postalCode: 'N1 1AA',
+          country: 'GB',
+        ),
+      );
+      expect(item.username, 'alicex');
       expect(item.notes, contains('Passport: X123'));
+    });
+
+    test('a card code that is not a card number stays in the notes', () {
+      final b = BitwardenJsonImporter.parse('{"items":[{"type":3,'
+          '"name":"Gift","card":{"number":"GC-AB12-9F"}}]}');
+      expect(b.items.single.card!.number, '');
+      expect(b.items.single.notes, contains('Card number: GC-AB12-9F'));
+    });
+
+    test('a card expiry it cannot read stays in the notes', () {
+      final b = BitwardenJsonImporter.parse('{"items":[{"type":3,'
+          '"name":"Odd","card":{"number":"4111 1111 1111 1111",'
+          '"expMonth":"Sept","expYear":"2030"}}]}');
+      final item = b.items.single;
+      expect(item.card!.number, '4111111111111111');
+      expect(item.card!.expMonth, '');
+      expect(item.notes, contains('Expires: Sept/2030'));
     });
 
     test('null password imports as empty', () {
@@ -200,13 +239,61 @@ void main() {
       expect(item.notes, contains('Tags: personal'));
     });
 
-    test('credit card maps holder and number; expiry goes to notes', () {
+    test('credit card fills the card fields', () {
       final item = named(batch, 'Mastercard');
       expect(item.category, EntryCategory.card);
-      expect(item.username, 'Bob Example');
-      expect(item.password, '5555444433331111');
-      expect(item.notes, contains('verification number: 987'));
-      expect(item.notes, contains('expiry date: 11/2030'));
+      expect(
+        item.card,
+        const CardDetails(
+          holder: 'Bob Example',
+          number: '5555444433331111',
+          expMonth: '11',
+          expYear: '2030',
+          cvc: '987',
+        ),
+      );
+      expect(item.username, '');
+      expect(item.password, '');
+      expect(item.notes, isEmpty);
+    });
+
+    test('identity fills name, contact and address', () {
+      final b = OnePuxImporter.parseExportData(r'''
+{"accounts":[{"vaults":[{"items":[{"categoryUuid":"004",
+ "overview":{"title":"Me"},
+ "details":{"sections":[
+  {"fields":[
+   {"id":"firstname","title":"first name","value":{"string":"Bob"}},
+   {"id":"initial","title":"initial","value":{"string":"J"}},
+   {"id":"lastname","title":"last name","value":{"string":"Example"}},
+   {"id":"company","title":"company","value":{"string":"Acme"}}]},
+  {"fields":[
+   {"id":"address","title":"address","value":{"address":{
+     "street":"5 High St","city":"Leeds","state":"West Yorkshire",
+     "zip":"LS1 1AA","country":"gb"}}},
+   {"id":"defphone","title":"default phone","value":{"phone":"0113 000"}},
+   {"id":"cellphone","title":"mobile","value":{"phone":"07700 900000"}}]},
+  {"fields":[
+   {"id":"email","title":"email","value":{"email":
+     {"email_address":"bob@example.com"}}}]}]}}]}]}]}
+''');
+      final item = b.items.single;
+      expect(item.category, EntryCategory.identity);
+      expect(
+        item.identity,
+        const IdentityDetails(
+          fullName: 'Bob J Example',
+          email: 'bob@example.com',
+          phone: '0113 000',
+          address1: '5 High St',
+          city: 'Leeds',
+          region: 'West Yorkshire',
+          postalCode: 'LS1 1AA',
+          country: 'gb',
+        ),
+      );
+      expect(item.notes, contains('company: Acme'));
+      expect(item.notes, contains('mobile: 07700 900000'));
     });
 
     test('secure note keeps unicode', () {

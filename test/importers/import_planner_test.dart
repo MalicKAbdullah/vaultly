@@ -2,6 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vaultkey/src/features/importers/models/imported_item.dart';
 import 'package:vaultkey/src/features/importers/services/import_planner.dart';
 import 'package:vaultkey/src/features/totp/models/totp_config.dart';
+import 'package:vaultkey/src/features/vault/models/card_details.dart';
+import 'package:vaultkey/src/features/vault/models/identity_details.dart';
 import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
 
 import '../fakes/fakes.dart';
@@ -58,6 +60,104 @@ void main() {
       );
       expect(o.duplicates, isEmpty);
       expect(o.added, 1);
+    });
+
+    test('two cards with the same title but different numbers are kept', () {
+      final o = run(
+        [
+          const ImportedItem(
+            title: 'Visa',
+            category: EntryCategory.card,
+            card: CardDetails(number: '4111111111111111'),
+          ),
+          const ImportedItem(
+            title: 'Visa',
+            category: EntryCategory.card,
+            card: CardDetails(number: '4242424242424242'),
+          ),
+        ],
+        current: const [],
+      );
+      expect(o.duplicates, isEmpty);
+      expect(o.added, 2);
+    });
+
+    test('the same card again is a duplicate, and merge fills the gaps', () {
+      const card = CardDetails(number: '4111111111111111', cvc: '123');
+      final o = run(
+        [
+          const ImportedItem(
+            title: 'Visa',
+            category: EntryCategory.card,
+            card: card,
+          ),
+        ],
+        current: [
+          makeEntry(
+            id: 'v',
+            title: 'Visa',
+            username: '',
+            url: '',
+            category: EntryCategory.card,
+            card: card,
+          ),
+        ],
+      );
+      expect(o.duplicates.single.existing.id, 'v');
+    });
+
+    test('cards and identities imported by older versions still match', () {
+      final o = run(
+        [
+          const ImportedItem(
+            title: 'Visa',
+            category: EntryCategory.card,
+            card: CardDetails(holder: 'Jo', number: '4111111111111111'),
+          ),
+          const ImportedItem(
+            title: 'Me',
+            username: 'jo123',
+            category: EntryCategory.identity,
+            identity: IdentityDetails(email: 'jo@x.example'),
+          ),
+        ],
+        current: [
+          makeEntry(
+            id: 'old-card',
+            title: 'Visa',
+            username: 'Jo',
+            password: '4111111111111111',
+            url: '',
+            category: EntryCategory.card,
+          ),
+          makeEntry(
+            id: 'old-me',
+            title: 'Me',
+            username: 'jo@x.example',
+            password: '',
+            url: '',
+            category: EntryCategory.identity,
+          ),
+        ],
+      );
+      expect(
+        o.duplicates.map((d) => d.existing.id),
+        ['old-card', 'old-me'],
+      );
+    });
+
+    test('merge adds an imported identity to an entry without one', () {
+      const identity = IdentityDetails(fullName: 'Jo', email: 'jo@x.example');
+      final merged = ImportPlanner.mergeInto(
+        makeEntry(username: 'jo@x.example'),
+        const ImportedItem(
+          title: 'Example',
+          username: 'jo@x.example',
+          identity: identity,
+        ),
+        DateTime(2026, 7, 5),
+      );
+      expect(merged.identity, identity);
     });
 
     test('falls back to the title when there is no URL', () {

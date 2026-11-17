@@ -29,7 +29,11 @@ final class VaultRepository {
   final CipherService _cipher;
   final IBackgroundWorker _worker;
 
-  static const int _formatVersion = 1;
+  /// The version of the entry JSON. Format 2 added card and identity
+  /// details; a Vaultly that only knows format 1 drops them when it
+  /// rewrites an entry, so backups and sync use this number to refuse
+  /// crossing to an older reader instead of losing data.
+  static const int formatVersion = 2;
 
   /// The encrypted vault as stored now; null when no vault file exists.
   Future<EncryptedPayload?> readPayload() async {
@@ -130,7 +134,7 @@ final class VaultRepository {
 
   /// Serializes entries to the canonical vault JSON document.
   static String encodeEntries(List<VaultEntry> entries) => jsonEncode({
-        'version': _formatVersion,
+        'version': formatVersion,
         'entries': entries.map((e) => e.toJson()).toList(),
       });
 

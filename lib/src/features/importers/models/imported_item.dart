@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:vaultkey/src/features/totp/models/totp_config.dart';
+import 'package:vaultkey/src/features/vault/models/card_details.dart';
+import 'package:vaultkey/src/features/vault/models/identity_details.dart';
 import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
 
 /// Where an import came from. Drives the labels on the preview screen.
@@ -30,6 +32,8 @@ final class ImportedItem {
     this.category = EntryCategory.login,
     this.favorite = false,
     this.totp,
+    this.card,
+    this.identity,
   });
 
   final String title;
@@ -40,6 +44,18 @@ final class ImportedItem {
   final EntryCategory category;
   final bool favorite;
   final TotpConfig? totp;
+  final CardDetails? card;
+  final IdentityDetails? identity;
+
+  /// What tells this item apart from others with the same title; see
+  /// [accountKey].
+  String get account => accountKey(
+        category: category,
+        username: username,
+        password: password,
+        card: card,
+        identity: identity,
+      );
 
   VaultEntry toEntry({required String id, required DateTime now}) => VaultEntry(
         id: id,
@@ -51,6 +67,8 @@ final class ImportedItem {
         category: category,
         favorite: favorite,
         totp: totp,
+        card: card,
+        identity: identity,
         createdAt: now,
         updatedAt: now,
         passwordChangedAt: now,
@@ -66,12 +84,33 @@ final class ImportedItem {
       other.notes == notes &&
       other.category == category &&
       other.favorite == favorite &&
-      other.totp == totp;
+      other.totp == totp &&
+      other.card == card &&
+      other.identity == identity;
 
   @override
-  int get hashCode => Object.hash(
-      title, username, password, url, notes, category, favorite, totp);
+  int get hashCode => Object.hash(title, username, password, url, notes,
+      category, favorite, totp, card, identity);
 }
+
+/// What tells an item apart from others with the same title: a card's
+/// number, an identity's email, otherwise the username.
+///
+/// Cards and identities imported before they had their own fields keep the
+/// number in [password] and the email in [username]; reading those keeps a
+/// re-import of the same export matching them.
+String accountKey({
+  required EntryCategory category,
+  required String username,
+  required String password,
+  required CardDetails? card,
+  required IdentityDetails? identity,
+}) =>
+    switch (category) {
+      EntryCategory.card => card == null ? password : card.number,
+      EntryCategory.identity => identity == null ? username : identity.email,
+      _ => username,
+    };
 
 /// A two-factor account from an authenticator export: no password, only the
 /// code settings and the labels that say which login it belongs to.

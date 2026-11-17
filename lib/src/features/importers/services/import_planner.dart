@@ -76,7 +76,7 @@ abstract final class ImportPlanner {
     final byKey = <String, int>{};
     void index(int i) {
       final e = working[i];
-      final key = duplicateKey(e.url, e.title, e.username);
+      final key = duplicateKey(e.url, e.title, accountOf(e));
       if (key != null) byKey.putIfAbsent(key, () => i);
     }
 
@@ -95,7 +95,7 @@ abstract final class ImportPlanner {
     }
 
     for (final item in batch.items) {
-      final key = duplicateKey(item.url, item.title, item.username);
+      final key = duplicateKey(item.url, item.title, item.account);
       final idx = key == null ? null : byKey[key];
       if (idx == null) {
         add(item);
@@ -165,13 +165,24 @@ abstract final class ImportPlanner {
     );
   }
 
-  /// Same site + same username. The site is the URL host without `www.`
+  /// The entry's counterpart of [ImportedItem.account].
+  static String accountOf(VaultEntry e) => accountKey(
+        category: e.category,
+        username: e.username,
+        password: e.password,
+        card: e.card,
+        identity: e.identity,
+      );
+
+  /// Same site + same account ([accountKey]: a card's number, an
+  /// identity's email, otherwise the username). The site is the URL host
+  /// without `www.`
   /// (or the lower-cased title when there is no URL). Items without any
-  /// site or username are never duplicates.
-  static String? duplicateKey(String url, String title, String username) {
+  /// site or account are never duplicates.
+  static String? duplicateKey(String url, String title, String account) {
     final site =
         siteOf(url).isNotEmpty ? siteOf(url) : title.trim().toLowerCase();
-    final user = username.trim().toLowerCase();
+    final user = account.trim().toLowerCase();
     if (site.isEmpty && user.isEmpty) return null;
     return '$site\u0000$user';
   }
@@ -208,6 +219,11 @@ abstract final class ImportPlanner {
       favorite: e.favorite || incoming.favorite,
       totp:
           e.totp == null && incoming.totp != null ? () => incoming.totp : null,
+      card:
+          e.card == null && incoming.card != null ? () => incoming.card : null,
+      identity: e.identity == null && incoming.identity != null
+          ? () => incoming.identity
+          : null,
     );
     if (next == existing) return existing;
     return next.copyWith(updatedAt: now);
