@@ -179,6 +179,8 @@ abstract final class OnePuxImporter {
     // An expiry Vaultly cannot read is kept as text, not lost.
     final expiry = CardDetails.parseExpiry(card['expiry'] ?? '');
     if (expiry == null) lines['Expires'] = card['expiry']!;
+    final number = CardDetails.numberOf(card['number'] ?? '');
+    if (number == null) lines['Card number'] = card['number']!;
     final tags = (overview['tags'] as List? ?? const []).join(', ');
     return ImportedItem(
       title: title,
@@ -207,7 +209,7 @@ abstract final class OnePuxImporter {
       card: category == _creditCard
           ? CardDetails(
               holder: card['holder'] ?? '',
-              number: CardDetails.digitsOf(card['number'] ?? ''),
+              number: number ?? '',
               expMonth: expiry == null ? '' : expiry.month,
               expYear: expiry == null ? '' : expiry.year,
               cvc: card['cvc'] ?? '',

@@ -129,6 +129,13 @@ void main() {
       expect(item.notes, contains('Passport: X123'));
     });
 
+    test('a card code that is not a card number stays in the notes', () {
+      final b = BitwardenJsonImporter.parse('{"items":[{"type":3,'
+          '"name":"Gift","card":{"number":"GC-AB12-9F"}}]}');
+      expect(b.items.single.card!.number, '');
+      expect(b.items.single.notes, contains('Card number: GC-AB12-9F'));
+    });
+
     test('a card expiry it cannot read stays in the notes', () {
       final b = BitwardenJsonImporter.parse('{"items":[{"type":3,'
           '"name":"Odd","card":{"number":"4111 1111 1111 1111",'

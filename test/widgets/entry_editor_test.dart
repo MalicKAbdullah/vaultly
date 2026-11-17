@@ -241,6 +241,26 @@ void main() {
     expect(entry.card, isNull);
   });
 
+  testWidgets('editing keeps a four-digit expiry year', (tester) async {
+    const card = CardDetails(number: '4111', expMonth: '12', expYear: '1999');
+    await pumpEditor(
+      tester,
+      entryId: 'c',
+      existing: makeEntry(
+        id: 'c',
+        title: 'Old',
+        category: EntryCategory.card,
+        username: '',
+        password: '',
+        url: '',
+        card: card,
+      ),
+    );
+    await save(tester, 'Save changes');
+    final entry = container.read(vaultEntriesProvider).valueOrNull!.single;
+    expect(entry.card, card);
+  });
+
   testWidgets('switching category keeps a filled card form visible',
       (tester) async {
     const card = CardDetails(number: '4242424242424242', cvc: '321');

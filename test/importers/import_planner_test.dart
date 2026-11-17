@@ -106,6 +106,46 @@ void main() {
       expect(o.duplicates.single.existing.id, 'v');
     });
 
+    test('cards and identities imported by older versions still match', () {
+      final o = run(
+        [
+          const ImportedItem(
+            title: 'Visa',
+            category: EntryCategory.card,
+            card: CardDetails(holder: 'Jo', number: '4111111111111111'),
+          ),
+          const ImportedItem(
+            title: 'Me',
+            username: 'jo123',
+            category: EntryCategory.identity,
+            identity: IdentityDetails(email: 'jo@x.example'),
+          ),
+        ],
+        current: [
+          makeEntry(
+            id: 'old-card',
+            title: 'Visa',
+            username: 'Jo',
+            password: '4111111111111111',
+            url: '',
+            category: EntryCategory.card,
+          ),
+          makeEntry(
+            id: 'old-me',
+            title: 'Me',
+            username: 'jo@x.example',
+            password: '',
+            url: '',
+            category: EntryCategory.identity,
+          ),
+        ],
+      );
+      expect(
+        o.duplicates.map((d) => d.existing.id),
+        ['old-card', 'old-me'],
+      );
+    });
+
     test('merge adds an imported identity to an entry without one', () {
       const identity = IdentityDetails(fullName: 'Jo', email: 'jo@x.example');
       final merged = ImportPlanner.mergeInto(

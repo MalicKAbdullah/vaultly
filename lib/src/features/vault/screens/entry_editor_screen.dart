@@ -121,7 +121,10 @@ class _EntryEditorScreenState extends ConsumerState<EntryEditorScreen> {
       _hasCard = true;
       _holderController.text = card.holder;
       _numberController.text = card.groupedNumber;
-      _expiryController.text = card.expiry;
+      // The full year, so an edit never turns 1999 into 2099.
+      _expiryController.text = card.expMonth.isEmpty || card.expYear.isEmpty
+          ? ''
+          : '${card.expMonth}/${card.expYear}';
       _cvcController.text = card.cvc;
     }
     final identity = entry.identity;

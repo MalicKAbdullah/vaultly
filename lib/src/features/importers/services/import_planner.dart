@@ -165,16 +165,18 @@ abstract final class ImportPlanner {
     );
   }
 
-  /// The entry's counterpart of [ImportedItem.account]: what tells it apart
-  /// from others with the same title.
-  static String accountOf(VaultEntry e) => [
-        e.username,
-        if (e.card != null) e.card!.number,
-        if (e.identity != null) ...[e.identity!.email, e.identity!.fullName],
-      ].firstWhere((s) => s.isNotEmpty, orElse: () => '');
+  /// The entry's counterpart of [ImportedItem.account].
+  static String accountOf(VaultEntry e) => accountKey(
+        category: e.category,
+        username: e.username,
+        password: e.password,
+        card: e.card,
+        identity: e.identity,
+      );
 
-  /// Same site + same account (username, or a card's number, or an
-  /// identity's email or name). The site is the URL host without `www.`
+  /// Same site + same account ([accountKey]: a card's number, an
+  /// identity's email, otherwise the username). The site is the URL host
+  /// without `www.`
   /// (or the lower-cased title when there is no URL). Items without any
   /// site or account are never duplicates.
   static String? duplicateKey(String url, String title, String account) {

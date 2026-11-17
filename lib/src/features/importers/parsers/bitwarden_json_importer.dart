@@ -116,11 +116,12 @@ abstract final class BitwardenJsonImporter {
         final month = str(card, 'expMonth');
         final year = str(card, 'expYear');
         final expiry = CardDetails.normalizeExpiry(month, year);
+        final number = CardDetails.numberOf(str(card, 'number'));
         return ImportedItem(
           title: ImportText.title(name, ''),
           card: CardDetails(
             holder: str(card, 'cardholderName'),
-            number: CardDetails.digitsOf(str(card, 'number')),
+            number: number ?? '',
             expMonth: expiry == null ? '' : expiry.month,
             expYear: expiry == null ? '' : expiry.year,
             cvc: str(card, 'code'),
@@ -128,6 +129,8 @@ abstract final class BitwardenJsonImporter {
           notes: ImportText.joinNotes([
             ImportText.fieldLines({
               'Brand': str(card, 'brand'),
+              // A number Vaultly cannot read as digits is kept as text.
+              if (number == null) 'Card number': str(card, 'number'),
               // An expiry Vaultly cannot read is kept as text, not lost.
               if (expiry == null)
                 'Expires': [month, year].where((p) => p.isNotEmpty).join('/'),

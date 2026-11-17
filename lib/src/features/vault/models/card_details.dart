@@ -83,6 +83,11 @@ final class CardDetails {
   /// Keeps only the digits of a typed or imported card number.
   static String digitsOf(String raw) => raw.replaceAll(RegExp(r'[^0-9]'), '');
 
+  /// The digits of [raw] when it is written like a card number (digits,
+  /// spaces, dashes); null for anything else, such as a gift-card code.
+  static String? numberOf(String raw) =>
+      RegExp(r'^[0-9 \-]*$').hasMatch(raw) ? digitsOf(raw) : null;
+
   /// Parses a typed expiry (`7/30`, `07/2030`, `0730`, `07-30`) into a
   /// two-digit month and a four-digit year. Empty input gives empty parts;
   /// anything that is not a real month and year returns null.
