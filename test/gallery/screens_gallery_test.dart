@@ -24,6 +24,8 @@ import 'package:vaultkey/src/features/generator/screens/generator_screen.dart';
 import 'package:vaultkey/src/features/health/screens/health_screen.dart';
 import 'package:vaultkey/src/features/settings/screens/settings_screen.dart';
 import 'package:vaultkey/src/features/totp/models/totp_config.dart';
+import 'package:vaultkey/src/features/vault/models/card_details.dart';
+import 'package:vaultkey/src/features/vault/models/identity_details.dart';
 import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
 import 'package:vaultkey/src/features/vault/providers/vault_providers.dart';
 import 'package:vaultkey/src/features/vault/screens/entry_detail_screen.dart';
@@ -129,6 +131,45 @@ final _entries = [
     url: '',
     category: EntryCategory.note,
     updatedAt: DateTime(2026, 8, 2),
+  ),
+];
+
+final _cardAndIdentity = [
+  makeEntry(
+    id: 'visa',
+    title: 'Visa debit',
+    username: '',
+    password: '',
+    url: '',
+    category: EntryCategory.card,
+    card: const CardDetails(
+      holder: 'Sara Ahmed',
+      number: '4242424242424242',
+      expMonth: '07',
+      expYear: '2030',
+      cvc: '123',
+    ),
+    updatedAt: DateTime(2026, 10, 12),
+  ),
+  makeEntry(
+    id: 'home-address',
+    title: 'Home',
+    username: '',
+    password: '',
+    url: '',
+    category: EntryCategory.identity,
+    identity: const IdentityDetails(
+      fullName: 'Sara Ahmed',
+      email: 'sara.ahmed@example.com',
+      phone: '+92 300 0000000',
+      address1: '14 Canal View',
+      address2: 'Flat 3B',
+      city: 'Lahore',
+      region: 'Punjab',
+      postalCode: '54000',
+      country: 'Pakistan',
+    ),
+    updatedAt: DateTime(2026, 10, 2),
   ),
 ];
 
@@ -365,6 +406,53 @@ void main() {
       () => const EntryDetailScreen(entryId: 'github'),
       overrides: await _overrides(),
       height: 1240,
+    );
+  });
+
+  testWidgets('detail-card', skip: skip != null, (tester) async {
+    await _render(
+      tester,
+      'detail-card',
+      () => const EntryDetailScreen(entryId: 'visa'),
+      overrides: await _overrides(entries: _cardAndIdentity),
+    );
+  });
+
+  testWidgets('detail-identity', skip: skip != null, (tester) async {
+    await _render(
+      tester,
+      'detail-identity',
+      () => const EntryDetailScreen(entryId: 'home-address'),
+      overrides: await _overrides(entries: _cardAndIdentity),
+    );
+  });
+
+  testWidgets('editor-card', skip: skip != null, (tester) async {
+    await _render(
+      tester,
+      'editor-card',
+      () => const EntryEditorScreen(entryId: 'visa'),
+      overrides: await _overrides(entries: _cardAndIdentity),
+    );
+  });
+
+  testWidgets('editor-identity', skip: skip != null, (tester) async {
+    await _render(
+      tester,
+      'editor-identity',
+      () => const EntryEditorScreen(entryId: 'home-address'),
+      overrides: await _overrides(entries: _cardAndIdentity),
+      height: 1400,
+    );
+  });
+
+  testWidgets('home-cards', skip: skip != null, (tester) async {
+    await _render(
+      tester,
+      'home-cards',
+      VaultListScreen.new,
+      overrides: await _overrides(entries: _cardAndIdentity),
+      tab: 0,
     );
   });
 

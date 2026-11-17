@@ -29,11 +29,14 @@ class EntryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = SuiteColors.of(context);
-    final subtitle = entry.username.isNotEmpty
-        ? entry.username
-        : entry.url.isNotEmpty
-            ? entry.url
-            : entry.category.label;
+    final card = entry.card;
+    final identity = entry.identity;
+    final subtitle = [
+      entry.username,
+      if (card != null) card.maskedLabel,
+      if (identity != null) ...[identity.fullName, identity.email],
+      entry.url,
+    ].firstWhere((s) => s.isNotEmpty, orElse: () => entry.category.label);
     return InkWell(
       onTap: onTap,
       child: ConstrainedBox(

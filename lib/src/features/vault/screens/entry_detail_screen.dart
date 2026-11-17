@@ -28,6 +28,8 @@ class EntryDetailScreen extends ConsumerStatefulWidget {
 
 class _EntryDetailScreenState extends ConsumerState<EntryDetailScreen> {
   bool _revealed = false;
+  bool _numberRevealed = false;
+  bool _cvcRevealed = false;
 
   Future<void> _copySensitive(String value, String what) async {
     final guard = ref.read(clipboardGuardProvider);
@@ -114,6 +116,96 @@ class _EntryDetailScreenState extends ConsumerState<EntryDetailScreen> {
         ),
     ];
 
+    final card = entry.card;
+    final identity = entry.identity;
+    final cardNumber = card == null ? '' : card.number;
+
+    Widget revealButton(String what, bool shown, VoidCallback toggle) =>
+        IconButton(
+          tooltip: shown ? 'Hide $what' : 'Reveal $what',
+          icon: Icon(
+            shown ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+            size: 22,
+            color: c.textSecondary,
+          ),
+          onPressed: toggle,
+        );
+
+    final cardFields = <Widget>[
+      if (card != null) ...[
+        if (card.holder.isNotEmpty)
+          DetailFieldCard(
+            label: 'Name on card',
+            value: card.holder,
+            onCopy: () => _copyPlain(card.holder, 'Name'),
+          ),
+        if (card.number.isNotEmpty)
+          DetailFieldCard(
+            label: 'Card number',
+            value: _numberRevealed
+                ? card.groupedNumber
+                : '•••• •••• •••• ${card.last4}',
+            monospace: true,
+            onCopy: () => _copySensitive(card.number, 'Card number'),
+            extraAction: revealButton(
+              'card number',
+              _numberRevealed,
+              () => setState(() => _numberRevealed = !_numberRevealed),
+            ),
+          ),
+        if (card.expiry.isNotEmpty)
+          DetailFieldCard(
+            label: 'Expires',
+            value: card.expiry,
+            monospace: true,
+            onCopy: () => _copyPlain(card.expiry, 'Expiry date'),
+          ),
+        if (card.cvc.isNotEmpty)
+          DetailFieldCard(
+            label: 'Security code',
+            value: _cvcRevealed ? card.cvc : '•' * card.cvc.length,
+            monospace: _cvcRevealed,
+            obscured: !_cvcRevealed,
+            onCopy: () => _copySensitive(card.cvc, 'Security code'),
+            extraAction: revealButton(
+              'security code',
+              _cvcRevealed,
+              () => setState(() => _cvcRevealed = !_cvcRevealed),
+            ),
+          ),
+      ],
+    ];
+
+    final identityFields = <Widget>[
+      if (identity != null) ...[
+        if (identity.fullName.isNotEmpty)
+          DetailFieldCard(
+            label: 'Full name',
+            value: identity.fullName,
+            onCopy: () => _copyPlain(identity.fullName, 'Name'),
+          ),
+        if (identity.email.isNotEmpty)
+          DetailFieldCard(
+            label: 'Email',
+            value: identity.email,
+            onCopy: () => _copyPlain(identity.email, 'Email'),
+          ),
+        if (identity.phone.isNotEmpty)
+          DetailFieldCard(
+            label: 'Phone',
+            value: identity.phone,
+            onCopy: () => _copyPlain(identity.phone, 'Phone'),
+          ),
+        if (identity.hasAddress)
+          DetailFieldCard(
+            label: 'Address',
+            value: identity.formattedAddress,
+            multiline: true,
+            onCopy: () => _copyPlain(identity.formattedAddress, 'Address'),
+          ),
+      ],
+    ];
+
     return Scaffold(
       appBar: AppBar(
         actions: [
@@ -191,11 +283,19 @@ class _EntryDetailScreenState extends ConsumerState<EntryDetailScreen> {
               ),
             ],
           ),
-          if (entry.password.isNotEmpty || entry.url.isNotEmpty) ...[
+          if (cardNumber.isNotEmpty ||
+              entry.password.isNotEmpty ||
+              entry.url.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.lg),
             DetailActionButtons(
               children: [
-                if (entry.password.isNotEmpty)
+                if (cardNumber.isNotEmpty)
+                  VaultButton(
+                    label: 'Copy card number',
+                    icon: Icons.copy_rounded,
+                    onPressed: () => _copySensitive(cardNumber, 'Card number'),
+                  )
+                else if (entry.password.isNotEmpty)
                   VaultButton(
                     label: 'Copy password',
                     icon: Icons.copy_rounded,
@@ -209,6 +309,17 @@ class _EntryDetailScreenState extends ConsumerState<EntryDetailScreen> {
                     onPressed: () => _openUrl(entry.url),
                   ),
               ],
+            ),
+          ],
+          if (cardFields.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.lg),
+            RowGroup(separatorIndent: AppSpacing.mdl, children: cardFields),
+          ],
+          if (identityFields.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.lg),
+            RowGroup(
+              separatorIndent: AppSpacing.mdl,
+              children: identityFields,
             ),
           ],
           if (fields.isNotEmpty) ...[
@@ -237,11 +348,13 @@ class _EntryDetailScreenState extends ConsumerState<EntryDetailScreen> {
           RowGroup(
             separatorIndent: AppSpacing.md,
             children: [
-              AppListRow(
-                dense: true,
-                title: 'Password changed',
-                trailing: _MetaValue(relativeAge(entry.passwordChangedAt, now)),
-              ),
+              if (entry.password.isNotEmpty)
+                AppListRow(
+                  dense: true,
+                  title: 'Password changed',
+                  trailing:
+                      _MetaValue(relativeAge(entry.passwordChangedAt, now)),
+                ),
               AppListRow(
                 dense: true,
                 title: 'Last updated',

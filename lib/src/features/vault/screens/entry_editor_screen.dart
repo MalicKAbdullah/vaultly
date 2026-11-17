@@ -73,8 +73,7 @@ class _EntryEditorScreenState extends ConsumerState<EntryEditorScreen> {
 
   bool get _showCard => _category == EntryCategory.card || _hasCard;
 
-  bool get _showIdentity =>
-      _category == EntryCategory.identity || _hasIdentity;
+  bool get _showIdentity => _category == EntryCategory.identity || _hasIdentity;
 
   List<TextEditingController> get _controllers => [
         _titleController,
