@@ -1,7 +1,6 @@
 import 'package:core_crypto/core_crypto.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:vaultkey/src/core/background_worker.dart';
 import 'package:vaultkey/src/core/di.dart';
 import 'package:vaultkey/src/core/interfaces/vault_file_store.dart';
 import 'package:vaultkey/src/features/auth/providers/auth_providers.dart';
