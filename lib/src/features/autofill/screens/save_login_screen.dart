@@ -2,7 +2,9 @@ import 'package:core_theme/core_theme.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vaultkey/src/core/di.dart';
 import 'package:vaultkey/src/core/interfaces/autofill_bridge.dart';
+import 'package:vaultkey/src/features/health/services/fix_it.dart';
 import 'package:vaultkey/src/features/autofill/providers/autofill_providers.dart';
 import 'package:vaultkey/src/features/autofill/services/login_capture.dart';
 import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
@@ -35,7 +37,13 @@ class _SaveLoginScreenState extends ConsumerState<SaveLoginScreen> {
     if (login == null || entries == null) {
       return const Scaffold(body: SizedBox.shrink());
     }
-    final decision = LoginCapture.decide(entries, login);
+    final fix = ref.watch(fixTargetProvider);
+    final fixId = fix != null &&
+            fix.host == login.host &&
+            fix.expiresAt.isAfter(ref.watch(clockProvider).now())
+        ? fix.entryId
+        : null;
+    final decision = LoginCapture.decide(entries, login, fixEntryId: fixId);
     final site = login.host ?? login.package ?? 'this app';
 
     final (String title, String? action, String message) = switch (decision) {

@@ -9,6 +9,7 @@ import 'package:vaultkey/src/core/di.dart';
 import 'package:vaultkey/src/core/router/app_router.dart';
 import 'package:vaultkey/src/core/ui/vault_ui.dart';
 import 'package:vaultkey/src/features/generator/services/strength_estimator.dart';
+import 'package:vaultkey/src/features/health/services/fix_it.dart';
 import 'package:vaultkey/src/features/health/services/vault_health_analyzer.dart';
 import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
 import 'package:vaultkey/src/features/vault/providers/vault_providers.dart';
@@ -379,7 +380,7 @@ final class _RingPainter extends CustomPainter {
       old.value != value || old.color != color || old.track != track;
 }
 
-class _IssueSection extends StatelessWidget {
+class _IssueSection extends ConsumerWidget {
   const _IssueSection({
     required this.title,
     required this.subtitle,
@@ -395,7 +396,7 @@ class _IssueSection extends StatelessWidget {
   final String Function(VaultEntry) detail;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (entries.isEmpty) return const SizedBox.shrink();
     final c = SuiteColors.of(context);
     return Column(
@@ -415,9 +416,34 @@ class _IssueSection extends StatelessWidget {
                 leading: EntryAvatar(entry: entry, size: 42),
                 title: entry.title,
                 subtitle: entry.username.isEmpty ? null : entry.username,
-                trailing: Text(
-                  detail(entry),
-                  style: AppTextStyles.label.copyWith(color: c.textSecondary),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      detail(entry),
+                      style:
+                          AppTextStyles.label.copyWith(color: c.textSecondary),
+                    ),
+                    IconButton(
+                      tooltip: entry.url.isEmpty
+                          ? 'Add a website to fix this'
+                          : 'Change password',
+                      icon: Icon(
+                        Icons.lock_reset_rounded,
+                        color: entry.url.isEmpty ? c.textTertiary : c.accent,
+                      ),
+                      onPressed: () async {
+                        if (!await startFix(ref, entry) && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Add a website to fix this.'),
+                            ),
+                          );
+                          context.push(AppRoutes.entryDetail(entry.id));
+                        }
+                      },
+                    ),
+                  ],
                 ),
                 showChevron: true,
                 onTap: () => context.push(AppRoutes.entryDetail(entry.id)),
