@@ -1,6 +1,7 @@
 package dev.abdullah.vaultkey
 
 import androidx.fragment.app.FragmentActivity
+import dev.abdullah.vaultkey.fill.FillSession
 import dev.abdullah.vaultkey.vault.BiometricGate
 import dev.abdullah.vaultkey.vault.VaultKeyWrap
 import io.flutter.plugin.common.MethodCall
@@ -28,6 +29,9 @@ class BiometricKeyVault(private val activity: FragmentActivity) :
             )
             "release" -> release(call.argument<String>("reason")!!, result)
             "delete" -> {
+                // Every end of biometric unlock (turned off, master password
+                // changed, erase all) also ends a session armed from it.
+                FillSession.wipe()
                 wrap.delete()
                 result.success(null)
             }

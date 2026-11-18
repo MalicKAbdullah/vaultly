@@ -81,3 +81,9 @@ final class BiometricStateNotifier extends AsyncNotifier<BiometricState> {
     ref.invalidateSelf();
   }
 }
+
+/// Whether choosing an account keeps it ready for the next pages of a
+/// sign-in (two minutes, same site or app only).
+final fillSessionEnabledProvider = FutureProvider<bool>(
+  (ref) => ref.watch(fillSessionBridgeProvider).isEnabled(),
+);

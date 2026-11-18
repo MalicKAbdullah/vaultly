@@ -6,6 +6,7 @@ import 'package:core_storage/core_storage.dart';
 import 'package:vaultkey/src/core/background_worker.dart';
 import 'package:vaultkey/src/core/clock.dart';
 import 'package:vaultkey/src/core/interfaces/autofill_bridge.dart';
+import 'package:vaultkey/src/core/interfaces/fill_session_bridge.dart';
 import 'package:vaultkey/src/core/interfaces/key_derivation.dart';
 import 'package:vaultkey/src/core/interfaces/vault_file_store.dart';
 import 'package:vaultkey/src/core/services/clipboard_guard.dart';
@@ -259,4 +260,37 @@ VaultEntry makeEntry({
     passwordChangedAt: passwordChangedAt ?? created,
     history: history,
   );
+}
+
+/// In-memory fill session.
+final class FakeFillSessionBridge implements IFillSessionBridge {
+  String? armedEntryId;
+  bool enabled = true;
+  int clears = 0;
+
+  @override
+  Future<void> arm({
+    required String entryId,
+    required String title,
+    required String username,
+    required String password,
+    required String url,
+    Map<String, Object>? totp,
+  }) async =>
+      armedEntryId = entryId;
+
+  @override
+  Future<void> clear() async {
+    clears++;
+    armedEntryId = null;
+  }
+
+  @override
+  Future<String?> liveEntryId() async => armedEntryId;
+
+  @override
+  Future<bool> isEnabled() async => enabled;
+
+  @override
+  Future<void> setEnabled(bool value) async => enabled = value;
 }

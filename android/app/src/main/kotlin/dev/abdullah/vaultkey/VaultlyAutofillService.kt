@@ -18,6 +18,8 @@ import dev.abdullah.vaultkey.fill.AppSigners
 import dev.abdullah.vaultkey.fill.BrowserAllowlist
 import dev.abdullah.vaultkey.fill.DatasetFactory
 import dev.abdullah.vaultkey.fill.FillRequestIntents
+import dev.abdullah.vaultkey.fill.FillSession
+import dev.abdullah.vaultkey.fill.FillSessionActivity
 import dev.abdullah.vaultkey.fill.FillUnlockActivity
 import dev.abdullah.vaultkey.fill.FormDump
 import dev.abdullah.vaultkey.fill.FormParser
@@ -113,18 +115,30 @@ class VaultlyAutofillService : AutofillService() {
         // Fingerprint users get the sheet that fills without starting Flutter;
         // everyone else continues in the full app, which can derive the key
         // from the master password.
-        val intent = if (VaultKeyWrap(this).hasWrappedKey()) {
+        val unlockIntent = if (VaultKeyWrap(this).hasWrappedKey()) {
             FillRequestIntents.put(Intent(this, FillUnlockActivity::class.java), target, usernameIds, passwordIds)
         } else {
             FillRequestIntents.mainActivity(this, target, usernameIds, passwordIds)
         }
-        val dataset = DatasetFactory.locked(
-            this,
-            "Unlock Vaultly to fill",
-            usernameIds + passwordIds,
-            DatasetFactory.authIntent(this, AUTH_REQUEST_CODE, intent),
+        val ids = usernameIds + passwordIds
+        val response = FillResponse.Builder()
+        // With the chosen account armed for this page, "Continue as" comes first.
+        FillSession.current(target)?.let { session ->
+            val continueIntent = FillRequestIntents.put(
+                Intent(this, FillSessionActivity::class.java), target, usernameIds, passwordIds,
+            )
+            response.addDataset(
+                DatasetFactory.locked(
+                    this, "Continue as ${session.label}", ids,
+                    DatasetFactory.authIntent(this, SESSION_REQUEST_CODE, continueIntent),
+                ),
+            )
+        }
+        // Locked chips never name an account.
+        response.addDataset(
+            DatasetFactory.locked(this, "Vaultly", ids, DatasetFactory.authIntent(this, AUTH_REQUEST_CODE, unlockIntent)),
         )
-        return FillResponse.Builder().addDataset(dataset).build()
+        return response.build()
     }
 
     override fun onSaveRequest(request: SaveRequest, callback: SaveCallback) {
@@ -134,6 +148,7 @@ class VaultlyAutofillService : AutofillService() {
 
     private companion object {
         const val AUTH_REQUEST_CODE = 4201
+        const val SESSION_REQUEST_CODE = 4202
         const val TIMING_TAG = "vaultly.fill"
     }
 }

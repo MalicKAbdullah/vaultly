@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vaultkey/src/core/di.dart';
 import 'package:vaultkey/src/features/auth/providers/auth_providers.dart';
 import 'package:vaultkey/src/features/settings/providers/settings_providers.dart';
 
@@ -39,10 +40,17 @@ class _InactivityLockerState extends ConsumerState<InactivityLocker> {
     ref.read(sessionProvider.notifier).lock();
   }
 
+  /// The user sat idle in the app. Unlike leaving the app (which must not
+  /// end a "Sign in" that just opened a browser), idling ends the session.
+  void _lockForInactivity() {
+    unawaited(ref.read(fillSessionBridgeProvider).clear());
+    _lock();
+  }
+
   void _resetTimer() {
     _inactivityTimer?.cancel();
     if (ref.read(sessionProvider) != AuthStatus.unlocked) return;
-    _inactivityTimer = Timer(ref.read(autoLockProvider), _lock);
+    _inactivityTimer = Timer(ref.read(autoLockProvider), _lockForInactivity);
   }
 
   @override

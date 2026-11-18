@@ -12,6 +12,7 @@ import 'package:vaultkey/src/core/app_info.dart';
 import 'package:vaultkey/src/core/background_worker.dart';
 import 'package:vaultkey/src/core/clock.dart';
 import 'package:vaultkey/src/core/interfaces/autofill_bridge.dart';
+import 'package:vaultkey/src/core/interfaces/fill_session_bridge.dart';
 import 'package:vaultkey/src/core/interfaces/biometric_key_vault.dart';
 import 'package:vaultkey/src/core/interfaces/key_derivation.dart';
 import 'package:vaultkey/src/core/interfaces/print_bridge.dart';
@@ -66,6 +67,10 @@ final clipboardGuardProvider = Provider<ClipboardGuard>((ref) {
 
 final printBridgeProvider = Provider<IPrintBridge>(
   (_) => const MethodChannelPrintBridge(),
+);
+
+final fillSessionBridgeProvider = Provider<IFillSessionBridge>(
+  (_) => const MethodChannelFillSessionBridge(),
 );
 
 final autofillBridgeProvider = Provider<IAutofillBridge>(
