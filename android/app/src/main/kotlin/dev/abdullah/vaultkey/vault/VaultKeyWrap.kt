@@ -35,7 +35,11 @@ class VaultKeyWrap(context: Context) {
         class Ready(val cipher: Cipher, internal val blob: ByteArray) : Unwrap()
         object Missing : Unwrap()
 
-        /** Biometric enrollment changed; the stored key was deleted and is gone for good. */
+        /**
+         * Biometric enrollment changed, so the stored key can never be
+         * unwrapped. It is left in place: Dart's `BiometricUnlockService.disable()`
+         * is the one owner that deletes it and turns biometric unlock off.
+         */
         object Invalidated : Unwrap()
     }
 
@@ -62,7 +66,6 @@ class VaultKeyWrap(context: Context) {
             cipher.init(Cipher.DECRYPT_MODE, secret, GCMParameterSpec(TAG_BITS, blob, 0, IV_LENGTH))
             Unwrap.Ready(cipher, blob)
         } catch (_: KeyPermanentlyInvalidatedException) {
-            delete()
             Unwrap.Invalidated
         }
     }
