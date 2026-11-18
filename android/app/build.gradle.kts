@@ -26,6 +26,10 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
 
+    // The Dart ↔ Kotlin contract fixtures (vault file, matcher vectors),
+    // shared with the Dart tests.
+    sourceSets["test"].resources.srcDir("../../test/fixtures/contract")
+
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_17.toString()
     }
