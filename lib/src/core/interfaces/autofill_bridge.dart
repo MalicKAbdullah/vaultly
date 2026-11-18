@@ -52,6 +52,10 @@ abstract interface class IAutofillBridge {
   /// Opens the system screen where the user can pick Vaultly as the
   /// autofill provider. Returns false when the screen could not open.
   Future<bool> openSettings();
+
+  /// Forgets what the fill sheet remembered on this device: the entry
+  /// chosen for each site or app, and any armed fill session.
+  Future<void> forgetFillState();
 }
 
 /// Talks to MainActivity. Every call degrades gracefully on platforms
@@ -97,6 +101,9 @@ final class MethodChannelAutofillBridge implements IAutofillBridge {
   @override
   Future<bool> openSettings() async =>
       await _invoke<bool>('openSettings') ?? false;
+
+  @override
+  Future<void> forgetFillState() => _invoke<void>('forgetFillState');
 
   Future<T?> _invoke<T>(String method, [Object? arguments]) async {
     try {

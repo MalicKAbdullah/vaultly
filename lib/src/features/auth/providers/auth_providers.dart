@@ -275,6 +275,7 @@ final class SessionNotifier extends Notifier<AuthStatus> {
   Future<void> eraseAll() async {
     _wipe();
     await ref.read(biometricServiceProvider).disable();
+    await ref.read(autofillBridgeProvider).forgetFillState();
     await _auth.eraseAll();
     // The onboarding flag was erased with everything else — reload it so
     // the fresh start begins at the intro again.

@@ -11,6 +11,7 @@ import android.view.autofill.AutofillId
 import android.view.autofill.AutofillManager
 import android.view.autofill.AutofillValue
 import android.widget.RemoteViews
+import dev.abdullah.vaultkey.fill.RememberedChoices
 import dev.abdullah.vaultkey.print.EmergencyKitPrinter
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -86,6 +87,10 @@ class MainActivity : FlutterFragmentActivity() {
                     "isSupported" -> result.success(isAutofillSupported())
                     "isEnabled" -> result.success(isVaultlyAutofillEnabled())
                     "openSettings" -> result.success(openAutofillSettings())
+                    "forgetFillState" -> {
+                        RememberedChoices(this).clear()
+                        result.success(null)
+                    }
                     else -> result.notImplemented()
                 }
             }

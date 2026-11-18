@@ -1,6 +1,5 @@
 package dev.abdullah.vaultkey
 
-import android.app.PendingIntent
 import android.content.Intent
 import android.os.Build
 import android.os.CancellationSignal
@@ -14,14 +13,17 @@ import android.service.autofill.FillResponse
 import android.service.autofill.SaveCallback
 import android.service.autofill.SaveRequest
 import android.util.Log
-import android.widget.RemoteViews
 import androidx.annotation.RequiresApi
 import dev.abdullah.vaultkey.fill.AppSigners
 import dev.abdullah.vaultkey.fill.BrowserAllowlist
+import dev.abdullah.vaultkey.fill.DatasetFactory
+import dev.abdullah.vaultkey.fill.FillRequestIntents
+import dev.abdullah.vaultkey.fill.FillUnlockActivity
 import dev.abdullah.vaultkey.fill.FormDump
 import dev.abdullah.vaultkey.fill.FormParser
 import dev.abdullah.vaultkey.fill.RequestTarget
 import dev.abdullah.vaultkey.fill.ViewFieldNode
+import dev.abdullah.vaultkey.vault.VaultKeyWrap
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -108,28 +110,20 @@ class VaultlyAutofillService : AutofillService() {
         val usernameIds = ArrayList(parsed.usernames.map { it.autofillId!! })
         val passwordIds = ArrayList(parsed.passwords.map { it.autofillId!! })
 
-        val presentation = RemoteViews(packageName, R.layout.vaultly_autofill_item)
-        val intent = Intent(this, MainActivity::class.java).apply {
-            putExtra(MainActivity.EXTRA_AUTOFILL, true)
-            when (target) {
-                is RequestTarget.Web -> putExtra(MainActivity.EXTRA_AUTOFILL_DOMAIN, target.host)
-                is RequestTarget.App -> putExtra(MainActivity.EXTRA_AUTOFILL_PACKAGE, target.packageName)
-            }
-            putParcelableArrayListExtra(MainActivity.EXTRA_AUTOFILL_USERNAME_IDS, usernameIds)
-            putParcelableArrayListExtra(MainActivity.EXTRA_AUTOFILL_PASSWORD_IDS, passwordIds)
+        // Fingerprint users get the sheet that fills without starting Flutter;
+        // everyone else continues in the full app, which can derive the key
+        // from the master password.
+        val intent = if (VaultKeyWrap(this).hasWrappedKey()) {
+            FillRequestIntents.put(Intent(this, FillUnlockActivity::class.java), target, usernameIds, passwordIds)
+        } else {
+            FillRequestIntents.mainActivity(this, target, usernameIds, passwordIds)
         }
-        var pendingFlags = PendingIntent.FLAG_CANCEL_CURRENT
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            pendingFlags = pendingFlags or PendingIntent.FLAG_MUTABLE
-        }
-        val pendingIntent = PendingIntent.getActivity(this, AUTH_REQUEST_CODE, intent, pendingFlags)
-
-        val dataset = Dataset.Builder(presentation).apply {
-            // Auth-gated datasets still need every fillable id registered;
-            // the real values arrive in the authentication result.
-            (usernameIds + passwordIds).forEach { setValue(it, null, presentation) }
-            setAuthentication(pendingIntent.intentSender)
-        }.build()
+        val dataset = DatasetFactory.locked(
+            this,
+            "Unlock Vaultly to fill",
+            usernameIds + passwordIds,
+            DatasetFactory.authIntent(this, AUTH_REQUEST_CODE, intent),
+        )
         return FillResponse.Builder().addDataset(dataset).build()
     }
 

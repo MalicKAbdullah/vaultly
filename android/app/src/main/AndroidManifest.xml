@@ -36,6 +36,17 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- The sheet behind the autofill chip: fingerprint, then fill. It
+             must not fix its orientation (a crash for translucent
+             activities on API 26). -->
+        <activity
+            android:name=".fill.FillUnlockActivity"
+            android:exported="false"
+            android:theme="@style/FillSheetTheme"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:configChanges="orientation|screenSize|keyboardHidden|uiMode"/>
         <!-- Vaultly as an Android autofill provider (API 26+). -->
         <service
             android:name=".VaultlyAutofillService"
