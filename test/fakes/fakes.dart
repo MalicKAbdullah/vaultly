@@ -293,4 +293,12 @@ final class FakeFillSessionBridge implements IFillSessionBridge {
 
   @override
   Future<void> setEnabled(bool value) async => enabled = value;
+
+  bool copyCode = false;
+
+  @override
+  Future<bool> isCopyCodeEnabled() async => copyCode;
+
+  @override
+  Future<void> setCopyCode(bool value) async => copyCode = value;
 }

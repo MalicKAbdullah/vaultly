@@ -11,7 +11,13 @@ class FillSettings(context: Context) {
         get() = prefs.getBoolean(SESSION, true)
         set(value) = prefs.edit().putBoolean(SESSION, value).apply()
 
+    /** Copy the current 2FA code after a password fill. Off by default. */
+    var copyCode: Boolean
+        get() = prefs.getBoolean(COPY_CODE, false)
+        set(value) = prefs.edit().putBoolean(COPY_CODE, value).apply()
+
     private companion object {
         const val SESSION = "session_enabled"
+        const val COPY_CODE = "copy_code"
     }
 }

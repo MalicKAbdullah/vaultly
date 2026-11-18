@@ -1,0 +1,68 @@
+{
+ "roots": [
+  {
+   "id": "content",
+   "children": [
+    {
+     "domain": "example.com",
+     "children": [
+      {
+       "input": {
+        "type": "text",
+        "maxlength": "1",
+        "name": "d0"
+       },
+       "text": true,
+       "domain": "example.com"
+      },
+      {
+       "input": {
+        "type": "text",
+        "maxlength": "1",
+        "name": "d1"
+       },
+       "text": true,
+       "domain": "example.com"
+      },
+      {
+       "input": {
+        "type": "text",
+        "maxlength": "1",
+        "name": "d2"
+       },
+       "text": true,
+       "domain": "example.com"
+      },
+      {
+       "input": {
+        "type": "text",
+        "maxlength": "1",
+        "name": "d3"
+       },
+       "text": true,
+       "domain": "example.com"
+      },
+      {
+       "input": {
+        "type": "text",
+        "maxlength": "1",
+        "name": "d4"
+       },
+       "text": true,
+       "domain": "example.com"
+      },
+      {
+       "input": {
+        "type": "text",
+        "maxlength": "1",
+        "name": "d5"
+       },
+       "text": true,
+       "domain": "example.com"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

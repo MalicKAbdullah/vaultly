@@ -1,0 +1,122 @@
+[
+ {
+  "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+  "algorithm": "SHA1",
+  "digits": 8,
+  "period": 30,
+  "unixSeconds": 59,
+  "code": "94287082"
+ },
+ {
+  "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZA====",
+  "algorithm": "SHA256",
+  "digits": 8,
+  "period": 30,
+  "unixSeconds": 59,
+  "code": "46119246"
+ },
+ {
+  "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNA=",
+  "algorithm": "SHA512",
+  "digits": 8,
+  "period": 30,
+  "unixSeconds": 59,
+  "code": "90693936"
+ },
+ {
+  "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+  "algorithm": "SHA1",
+  "digits": 8,
+  "period": 30,
+  "unixSeconds": 1111111109,
+  "code": "07081804"
+ },
+ {
+  "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZA====",
+  "algorithm": "SHA256",
+  "digits": 8,
+  "period": 30,
+  "unixSeconds": 1111111109,
+  "code": "68084774"
+ },
+ {
+  "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNA=",
+  "algorithm": "SHA512",
+  "digits": 8,
+  "period": 30,
+  "unixSeconds": 1111111109,
+  "code": "25091201"
+ },
+ {
+  "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+  "algorithm": "SHA1",
+  "digits": 8,
+  "period": 30,
+  "unixSeconds": 1234567890,
+  "code": "89005924"
+ },
+ {
+  "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZA====",
+  "algorithm": "SHA256",
+  "digits": 8,
+  "period": 30,
+  "unixSeconds": 1234567890,
+  "code": "91819424"
+ },
+ {
+  "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNA=",
+  "algorithm": "SHA512",
+  "digits": 8,
+  "period": 30,
+  "unixSeconds": 1234567890,
+  "code": "93441116"
+ },
+ {
+  "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+  "algorithm": "SHA1",
+  "digits": 8,
+  "period": 30,
+  "unixSeconds": 2000000000,
+  "code": "69279037"
+ },
+ {
+  "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZA====",
+  "algorithm": "SHA256",
+  "digits": 8,
+  "period": 30,
+  "unixSeconds": 2000000000,
+  "code": "90698825"
+ },
+ {
+  "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNA=",
+  "algorithm": "SHA512",
+  "digits": 8,
+  "period": 30,
+  "unixSeconds": 2000000000,
+  "code": "38618901"
+ },
+ {
+  "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+  "algorithm": "SHA1",
+  "digits": 8,
+  "period": 30,
+  "unixSeconds": 20000000000,
+  "code": "65353130"
+ },
+ {
+  "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZA====",
+  "algorithm": "SHA256",
+  "digits": 8,
+  "period": 30,
+  "unixSeconds": 20000000000,
+  "code": "77737706"
+ },
+ {
+  "secret": "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQGEZDGNA=",
+  "algorithm": "SHA512",
+  "digits": 8,
+  "period": 30,
+  "unixSeconds": 20000000000,
+  "code": "47863826"
+ }
+]

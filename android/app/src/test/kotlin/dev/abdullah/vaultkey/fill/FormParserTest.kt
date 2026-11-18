@@ -93,4 +93,32 @@ class FormParserTest {
         assertEquals(listOf("enter", "your", "password"), FormParser.words("Enter your password"))
         assertEquals(emptyList<String>(), FormParser.words(null))
     }
+
+    @Test
+    fun `one-time-code autocomplete is a code field, not a password`() {
+        val form = parse("otp_autocomplete")
+        assertEquals(listOf("pin"), form.codes.map { it.label })
+        assertEquals(emptyList<String>(), form.passwordLabels())
+    }
+
+    @Test
+    fun `verification code by name is a code field`() {
+        assertEquals(1, parse("otp_by_name").codes.size)
+    }
+
+    @Test
+    fun `a row of one-character boxes is a code in order`() {
+        assertEquals(listOf("d0", "d1", "d2", "d3", "d4", "d5"), parse("otp_boxes").codes.map { it.label })
+    }
+
+    @Test
+    fun `a zip code or a lone one-character field is not a one-time code`() {
+        assertEquals(emptyList<String>(), parse("not_otp_zip").codes.map { it.label })
+        assertEquals(emptyList<String>(), parse("shipping_address").codes.map { it.label })
+    }
+
+    @Test
+    fun `a code field Chrome typed from autocomplete is a code field`() {
+        assertEquals(listOf("code"), parse("otp_chrome_type").codes.map { it.label })
+    }
 }

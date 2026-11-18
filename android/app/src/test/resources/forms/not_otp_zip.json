@@ -1,0 +1,31 @@
+{
+ "roots": [
+  {
+   "id": "content",
+   "children": [
+    {
+     "domain": "example.com",
+     "children": [
+      {
+       "input": {
+        "type": "text",
+        "name": "zip_code"
+       },
+       "text": true,
+       "domain": "example.com"
+      },
+      {
+       "input": {
+        "type": "text",
+        "name": "promo_code",
+        "maxlength": "1"
+       },
+       "text": true,
+       "domain": "example.com"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

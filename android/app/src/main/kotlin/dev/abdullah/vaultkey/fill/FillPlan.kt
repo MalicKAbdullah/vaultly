@@ -12,10 +12,13 @@ sealed class FillPlan {
     data class Choose(val ranked: List<VaultRecord>) : FillPlan()
 
     companion object {
-        fun of(records: List<VaultRecord>, target: RequestTarget, rememberedId: String?): FillPlan {
+        fun of(records: List<VaultRecord>, target: RequestTarget, rememberedId: String?, needsCode: Boolean = false): FillPlan {
             val domain = (target as? RequestTarget.Web)?.host
             val pkg = (target as? RequestTarget.App)?.packageName
-            val fillable = records.filter { it.username.isNotEmpty() || it.password.isNotEmpty() }
+            // A page that only asks for a code can only be answered by an entry with a secret.
+            val fillable = records.filter {
+                if (needsCode) it.totp != null else it.username.isNotEmpty() || it.password.isNotEmpty()
+            }
             EntryMatcher.confirmed(fillable, domain, pkg, rememberedId)?.let { return Fill(it) }
             return Choose(EntryMatcher.rank(fillable, domain, pkg))
         }

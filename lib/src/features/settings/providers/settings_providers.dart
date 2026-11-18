@@ -82,6 +82,11 @@ final class BiometricStateNotifier extends AsyncNotifier<BiometricState> {
   }
 }
 
+/// Whether the current 2FA code is copied after a password fill.
+final copyCodeEnabledProvider = FutureProvider<bool>(
+  (ref) => ref.watch(fillSessionBridgeProvider).isCopyCodeEnabled(),
+);
+
 /// Whether choosing an account keeps it ready for the next pages of a
 /// sign-in (two minutes, same site or app only).
 final fillSessionEnabledProvider = FutureProvider<bool>(

@@ -1,0 +1,23 @@
+{
+ "roots": [
+  {
+   "id": "content",
+   "children": [
+    {
+     "domain": "example.com",
+     "children": [
+      {
+       "input": {
+        "type": "text",
+        "name": "verification_code",
+        "id": "verificationCode"
+       },
+       "text": true,
+       "domain": "example.com"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

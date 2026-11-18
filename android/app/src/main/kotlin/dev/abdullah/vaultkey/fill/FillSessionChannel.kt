@@ -48,6 +48,11 @@ class FillSessionChannel(private val context: Context) : MethodChannel.MethodCal
                 if (!on) FillSession.wipe()
                 result.success(null)
             }
+            "isCopyCodeEnabled" -> result.success(FillSettings(context).copyCode)
+            "setCopyCode" -> {
+                FillSettings(context).copyCode = call.argument<Boolean>("enabled")!!
+                result.success(null)
+            }
             else -> result.notImplemented()
         }
     }

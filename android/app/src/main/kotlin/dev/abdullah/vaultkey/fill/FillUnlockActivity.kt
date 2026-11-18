@@ -25,6 +25,7 @@ import androidx.fragment.app.FragmentActivity
 import dev.abdullah.vaultkey.vault.BiometricGate
 import dev.abdullah.vaultkey.vault.VaultFileReader
 import dev.abdullah.vaultkey.vault.VaultKeyWrap
+import dev.abdullah.vaultkey.vault.Totp
 import dev.abdullah.vaultkey.vault.VaultRecord
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -46,6 +47,7 @@ class FillUnlockActivity : FragmentActivity() {
     private lateinit var target: RequestTarget
     private lateinit var usernameIds: ArrayList<AutofillId>
     private lateinit var passwordIds: ArrayList<AutofillId>
+    private lateinit var codeIds: ArrayList<AutofillId>
     private lateinit var targetLabel: String
     private val worker: ExecutorService = Executors.newSingleThreadExecutor()
     private var records: List<VaultRecord> = emptyList()
@@ -61,6 +63,7 @@ class FillUnlockActivity : FragmentActivity() {
         target = FillRequestIntents.target(intent)
         usernameIds = intent.getParcelableArrayListExtra(FillRequestIntents.EXTRA_USERNAME_IDS)!!
         passwordIds = intent.getParcelableArrayListExtra(FillRequestIntents.EXTRA_PASSWORD_IDS)!!
+        codeIds = intent.getParcelableArrayListExtra(FillRequestIntents.EXTRA_CODE_IDS)!!
         targetLabel = when (target) {
             is RequestTarget.Web -> (target as RequestTarget.Web).host
             is RequestTarget.App -> appLabel((target as RequestTarget.App).packageName)
@@ -103,7 +106,7 @@ class FillUnlockActivity : FragmentActivity() {
         if (opened == null) return cancel()
         records = opened
         val remembered = RememberedChoices(this).get(target)
-        when (val plan = FillPlan.of(records, target, remembered)) {
+        when (val plan = FillPlan.of(records, target, remembered, needsCode = usernameIds.isEmpty() && passwordIds.isEmpty())) {
             is FillPlan.Fill -> fill(plan.record, remember = false, keepReady = true)
             is FillPlan.Choose -> showList(plan.ranked)
         }
@@ -113,19 +116,29 @@ class FillUnlockActivity : FragmentActivity() {
         if (done) return
         done = true
         if (remember) RememberedChoices(this).put(target, record.id)
-        val values = LinkedHashMap<AutofillId, String>()
-        usernameIds.forEach { values[it] = record.username }
-        passwordIds.forEach { values[it] = record.password }
-        val dataset = DatasetFactory.filled(this, "Vaultly", values)
+        val totp = record.totp
+        // A code about to expire could lapse before the site checks it: wait for the next one.
+        val wait = if (codeIds.isNotEmpty() && totp != null) Totp.waitBeforeUse(totp, System.currentTimeMillis()) else 0L
+        window.decorView.postDelayed({ complete(record, keepReady) }, wait)
+    }
+
+    private fun complete(record: VaultRecord, keepReady: Boolean) {
+        val filled = FillValues.of(
+            record.username, record.password, record.totp,
+            usernameIds, passwordIds, codeIds, System.currentTimeMillis(),
+        )
+        val dataset = DatasetFactory.filled(this, "Vaultly", filled.values)
         // Later pages of this sign-in (a password after the email, a code
         // after the password) continue from one tap.
-        val moreToFill = passwordIds.isEmpty() || record.totp != null
-        if (keepReady && moreToFill && FillSettings(this).sessionEnabled) {
+        if (keepReady && !filled.lastStep && FillSettings(this).sessionEnabled) {
             FillSession.arm(
                 this, record.id, record.username.ifEmpty { record.title },
                 record.username.toCharArray(), record.password.toCharArray(), record.totp,
                 SessionScope.begunOn(target, record.url, EquivalentDomains.get(this)),
             )
+        }
+        if (passwordIds.isNotEmpty() && record.totp != null && FillSettings(this).copyCode) {
+            NativeClipboard.copySensitive(this, Totp.code(record.totp, System.currentTimeMillis()))
         }
         setResult(
             Activity.RESULT_OK,

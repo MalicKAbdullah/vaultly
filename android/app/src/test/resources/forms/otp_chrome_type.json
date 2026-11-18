@@ -1,0 +1,25 @@
+{
+ "roots": [
+  {
+   "id": "content",
+   "children": [
+    {
+     "domain": "10.0.2.2",
+     "children": [
+      {
+       "input": {
+        "type": "text",
+        "name": "code",
+        "ua-autofill-hints": "ONE_TIME_CODE",
+        "computed-autofill-hints": "ONE_TIME_CODE",
+        "maxlength": "-1"
+       },
+       "text": true,
+       "domain": "10.0.2.2"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}
