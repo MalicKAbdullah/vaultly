@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vaultkey/src/core/di.dart';
+import 'package:vaultkey/src/features/autofill/providers/autofill_providers.dart';
 import 'package:vaultkey/src/features/auth/providers/auth_providers.dart';
 import 'package:vaultkey/src/features/settings/providers/settings_providers.dart';
 
@@ -25,7 +26,12 @@ class _InactivityLockerState extends ConsumerState<InactivityLocker> {
   @override
   void initState() {
     super.initState();
-    _lifecycle = AppLifecycleListener(onPause: _lock, onDetach: _lock);
+    _lifecycle = AppLifecycleListener(
+      onPause: _lock,
+      onDetach: _lock,
+      // A save request can reach an app that is already running.
+      onResume: () => ref.invalidate(pendingSaveProvider),
+    );
   }
 
   @override

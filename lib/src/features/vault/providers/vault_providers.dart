@@ -130,6 +130,15 @@ class VaultNotifier extends AsyncNotifier<List<VaultEntry>> {
   /// already has its own new id).
   Future<void> add(VaultEntry entry) => commit([..._current, entry]);
 
+  /// Sets [id]'s password, keeping the old one in its history.
+  Future<void> updatePassword(String id, String password) async {
+    final now = _now();
+    await commit([
+      for (final e in _current)
+        if (e.id == id) e.withNewPassword(password, now) else e,
+    ]);
+  }
+
   Future<void> toggleFavorite(String id) async {
     final now = _now();
     await commit([

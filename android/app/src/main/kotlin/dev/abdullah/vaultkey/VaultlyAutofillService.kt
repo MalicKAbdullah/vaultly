@@ -11,6 +11,8 @@ import android.service.autofill.FillCallback
 import android.service.autofill.FillRequest
 import android.service.autofill.FillResponse
 import android.service.autofill.SaveCallback
+import android.service.autofill.SaveInfo
+import android.app.PendingIntent
 import android.service.autofill.SaveRequest
 import android.util.Log
 import androidx.annotation.RequiresApi
@@ -20,6 +22,7 @@ import dev.abdullah.vaultkey.fill.DatasetFactory
 import dev.abdullah.vaultkey.fill.FillRequestIntents
 import dev.abdullah.vaultkey.fill.FillSession
 import dev.abdullah.vaultkey.fill.InlineChips
+import dev.abdullah.vaultkey.fill.PendingSave
 import dev.abdullah.vaultkey.fill.FillSessionActivity
 import dev.abdullah.vaultkey.fill.FillUnlockActivity
 import dev.abdullah.vaultkey.fill.FormDump
@@ -42,8 +45,9 @@ import java.util.concurrent.Executors
  * Requests are answered on one background thread, so parsing a large page
  * never holds up the service's main thread.
  *
- * Save requests (capturing new logins) are out of scope: no SaveInfo is
- * ever attached, so [onSaveRequest] never fires in practice.
+ * A login page also carries a SaveInfo: after the user submits, the system
+ * offers to save and [onSaveRequest] hands the captured login to the app,
+ * which owns every vault write.
  */
 @RequiresApi(Build.VERSION_CODES.O)
 class VaultlyAutofillService : AutofillService() {
@@ -153,17 +157,68 @@ class VaultlyAutofillService : AutofillService() {
                 chips?.takeIf { c -> c.hasRoom(datasets) }?.chip(datasets, "Vaultly"),
             ),
         )
+        // Offer to save what the user submits on a login page (Android 9+, where
+        // the save request can hand back an activity to run).
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && passwordIds.isNotEmpty()) {
+            val save = SaveInfo.Builder(
+                SaveInfo.SAVE_DATA_TYPE_USERNAME or SaveInfo.SAVE_DATA_TYPE_PASSWORD,
+                passwordIds.toTypedArray(),
+            ).setFlags(SaveInfo.FLAG_SAVE_ON_ALL_VIEWS_INVISIBLE)
+            if (usernameIds.isNotEmpty()) save.setOptionalIds(usernameIds.toTypedArray())
+            response.setSaveInfo(save.build())
+        }
         return response.build()
     }
 
     override fun onSaveRequest(request: SaveRequest, callback: SaveCallback) {
-        // No SaveInfo is declared, so nothing to save. Kept as a no-op.
-        callback.onSuccess()
+        worker.execute {
+            val capture = capture(request)
+            if (capture == null) {
+                callback.onSuccess()
+                return@execute
+            }
+            PendingSave.set(capture)
+            // Storing goes through the app, which owns every vault write: it
+            // opens, unlocks, and asks before saving.
+            val intent = Intent(this, MainActivity::class.java).putExtra(MainActivity.EXTRA_SAVE, true)
+            val pending = PendingIntent.getActivity(
+                this, SAVE_REQUEST_CODE, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                callback.onSuccess(pending.intentSender)
+            } else {
+                callback.onSuccess()
+            }
+        }
+    }
+
+    /** The submitted login, or null when there is no password to keep. */
+    private fun capture(request: SaveRequest): PendingSave.Capture? {
+        val structure = request.fillContexts.lastOrNull()?.structure ?: return null
+        val clientPackage = structure.activityComponent.packageName
+        if (clientPackage == packageName) return null
+        val parsed = FormParser.parse(ViewFieldNode.roots(structure))
+        val password = parsed.passwords.firstNotNullOfOrNull { it.enteredText?.takeIf(String::isNotEmpty) }
+            ?: return null
+        val username = parsed.usernames.firstNotNullOfOrNull { it.enteredText?.takeIf(String::isNotEmpty) }.orEmpty()
+        val target = RequestTarget.resolve(
+            packageName = clientPackage,
+            signers = AppSigners.of(this, clientPackage),
+            webDomain = parsed.webDomain,
+            allowlist = BrowserAllowlist.get(this),
+        )
+        return PendingSave.Capture(
+            username.toCharArray(),
+            password.toCharArray(),
+            host = (target as? RequestTarget.Web)?.host,
+            packageName = (target as? RequestTarget.App)?.packageName,
+        )
     }
 
     private companion object {
         const val AUTH_REQUEST_CODE = 4201
         const val SESSION_REQUEST_CODE = 4202
+        const val SAVE_REQUEST_CODE = 4203
         const val TIMING_TAG = "vaultly.fill"
     }
 }

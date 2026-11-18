@@ -13,6 +13,7 @@ import android.view.autofill.AutofillValue
 import android.widget.RemoteViews
 import dev.abdullah.vaultkey.fill.FillSession
 import dev.abdullah.vaultkey.fill.FillSessionChannel
+import dev.abdullah.vaultkey.fill.PendingSave
 import dev.abdullah.vaultkey.fill.RememberedChoices
 import dev.abdullah.vaultkey.print.EmergencyKitPrinter
 import io.flutter.embedding.android.FlutterFragmentActivity
@@ -24,6 +25,7 @@ class MainActivity : FlutterFragmentActivity() {
 
     companion object {
         const val EXTRA_AUTOFILL = "vaultly_autofill"
+        const val EXTRA_SAVE = "vaultly_save"
         const val EXTRA_AUTOFILL_PACKAGE = "vaultly_autofill_package"
         const val EXTRA_AUTOFILL_DOMAIN = "vaultly_autofill_domain"
         const val EXTRA_AUTOFILL_USERNAME_IDS = "vaultly_autofill_username_ids"
@@ -38,12 +40,20 @@ class MainActivity : FlutterFragmentActivity() {
     private var usernameIds: ArrayList<AutofillId> = arrayListOf()
     private var passwordIds: ArrayList<AutofillId> = arrayListOf()
     private var isAutofillFlow = false
+    private var isSaveFlow = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Block screenshots and hide vault contents in the recents preview.
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         readAutofillIntent(intent)
+    }
+
+    override fun onDestroy() {
+        // A save the user walked away from must not leave the captured
+        // password behind in memory.
+        if (isFinishing && isSaveFlow) PendingSave.clear()
+        super.onDestroy()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -53,6 +63,7 @@ class MainActivity : FlutterFragmentActivity() {
 
     @Suppress("DEPRECATION")
     private fun readAutofillIntent(intent: Intent?) {
+        if (intent?.getBooleanExtra(EXTRA_SAVE, false) == true) isSaveFlow = true
         if (intent == null || !intent.getBooleanExtra(EXTRA_AUTOFILL, false)) return
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         isAutofillFlow = true
@@ -88,6 +99,11 @@ class MainActivity : FlutterFragmentActivity() {
                         cancelAutofill()
                         result.success(null)
                     }
+                    "pendingSave" -> result.success(pendingSave())
+                    "finishSave" -> {
+                        finishSave(call.argument<String>("message"))
+                        result.success(null)
+                    }
                     "isSupported" -> result.success(isAutofillSupported())
                     "isEnabled" -> result.success(isVaultlyAutofillEnabled())
                     "openSettings" -> result.success(openAutofillSettings())
@@ -99,6 +115,25 @@ class MainActivity : FlutterFragmentActivity() {
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    private fun pendingSave(): Map<String, Any?>? {
+        if (!isSaveFlow) return null
+        val capture = PendingSave.get() ?: return null
+        return mapOf(
+            "username" to String(capture.username),
+            "password" to String(capture.password),
+            "host" to capture.host,
+            "package" to capture.packageName,
+        )
+    }
+
+    /** Ends the save: drops the held login and closes Vaultly, back to the page. */
+    private fun finishSave(message: String?) {
+        isSaveFlow = false
+        PendingSave.clear()
+        if (message != null) android.widget.Toast.makeText(this, message, android.widget.Toast.LENGTH_SHORT).show()
+        finish()
     }
 
     private fun pendingRequest(): Map<String, Any?>? {

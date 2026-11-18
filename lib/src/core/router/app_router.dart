@@ -7,6 +7,7 @@ import 'package:vaultkey/src/core/shell/home_shell.dart';
 import 'package:vaultkey/src/features/auth/providers/auth_providers.dart';
 import 'package:vaultkey/src/features/autofill/providers/autofill_providers.dart';
 import 'package:vaultkey/src/features/autofill/screens/autofill_picker_screen.dart';
+import 'package:vaultkey/src/features/autofill/screens/save_login_screen.dart';
 import 'package:vaultkey/src/features/auth/screens/onboarding_screen.dart';
 import 'package:vaultkey/src/features/auth/screens/recovery_key_screen.dart';
 import 'package:vaultkey/src/features/auth/screens/setup_screen.dart';
@@ -42,6 +43,7 @@ abstract final class AppRoutes {
   static const String import = '/import';
   static const String sync = '/sync';
   static const String autofillPicker = '/autofill-picker';
+  static const String saveLogin = '/save-login';
   static const String recoveryKey = '/recovery-key';
   static const String emergencyKit = '/emergency-kit';
   static const String receiveEntry = '/receive';
@@ -64,6 +66,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     // Re-route once the platform reports whether this launch is answering
     // another app's fill request.
     ..listen(autofillRequestProvider, (_, __) => refresh.value++)
+    ..listen(pendingSaveProvider, (_, __) => refresh.value++)
     ..listen(credentialRequestProvider, (_, __) => refresh.value++)
     // Re-route once the first-run flag loads or gets written.
     ..listen(setupOnboardingSeenProvider, (_, __) => refresh.value++)
@@ -111,6 +114,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 ? null
                 : AppRoutes.autofillPicker;
           }
+          // A login submitted elsewhere takes over the session: the only
+          // destination is the save screen.
+          if (ref.read(pendingSaveProvider).valueOrNull != null) {
+            return location == AppRoutes.saveLogin ? null : AppRoutes.saveLogin;
+          }
           // A pending recovery-key offer or display covers everything else.
           final recovery = ref.read(recoveryPromptProvider);
           if (recovery != RecoveryPrompt.none) {
@@ -124,6 +132,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               location == AppRoutes.setup ||
               location == AppRoutes.unlock ||
               location == AppRoutes.autofillPicker ||
+              location == AppRoutes.saveLogin ||
               location == AppRoutes.credentialRequest;
           return gate ? AppRoutes.vault : null;
       }
@@ -148,6 +157,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.unlock,
         builder: (_, __) => const UnlockScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.saveLogin,
+        builder: (_, __) => const SaveLoginScreen(),
       ),
       GoRoute(
         path: AppRoutes.autofillPicker,
