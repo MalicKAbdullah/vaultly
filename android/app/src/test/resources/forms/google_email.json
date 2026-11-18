@@ -1,31 +1,254 @@
 {
  "roots": [
   {
-   "id": "content",
    "children": [
     {
-     "domain": "accounts.google.com",
+     "id": "custom_tabs_handle_view_stub"
+    },
+    {
+     "id": "coordinator",
      "children": [
       {
-       "input": {
-        "type": "email",
-        "name": "identifier",
-        "id": "identifierId",
-        "autocomplete": "username webauthn"
-       },
-       "text": true,
-       "domain": "accounts.google.com"
+       "id": "compositor_view_holder",
+       "children": [
+        {
+         "domain": "accounts.google.com",
+         "children": [
+          {
+           "hint": "",
+           "hints": [
+            "username",
+            "webauthn"
+           ],
+           "input": {
+            "ua-autofill-hints": "USERNAME",
+            "crowdsourcing-autofill-hints": "USERNAME",
+            "visibility": "visible",
+            "maxlength": "-1",
+            "name": "identifier",
+            "crowdsourcing-predictions-autofill-hints": "USERNAME",
+            "label": "Email or phone",
+            "id": "identifierId",
+            "type": "text",
+            "computed-autofill-hints": "USERNAME"
+           },
+           "text": true,
+           "domain": "accounts.google.com"
+          },
+          {
+           "hint": "",
+           "input": {
+            "ua-autofill-hints": "PASSWORD",
+            "crowdsourcing-autofill-hints": "PASSWORD",
+            "visibility": "invisible",
+            "maxlength": "-1",
+            "name": "hiddenPassword",
+            "crowdsourcing-predictions-autofill-hints": "PASSWORD",
+            "label": "Forgot email?",
+            "id": "",
+            "type": "password",
+            "computed-autofill-hints": "PASSWORD"
+           },
+           "text": true,
+           "domain": "accounts.google.com"
+          },
+          {
+           "hint": "",
+           "hints": [
+            "off"
+           ],
+           "input": {
+            "ua-autofill-hints": "",
+            "crowdsourcing-autofill-hints": "NO_SERVER_DATA",
+            "visibility": "invisible",
+            "maxlength": "-1",
+            "name": "ca",
+            "crowdsourcing-predictions-autofill-hints": "NO_SERVER_DATA",
+            "label": "Type the text you hear or see",
+            "id": "ca",
+            "type": "text",
+            "computed-autofill-hints": "UNKNOWN_TYPE"
+           },
+           "text": true,
+           "domain": "accounts.google.com"
+          }
+         ]
+        },
+        {}
+       ]
       },
       {
-       "input": {
-        "type": "password",
-        "name": "hiddenPassword",
-        "autocomplete": "off"
-       },
-       "text": true,
-       "domain": "accounts.google.com"
+       "id": "ar_view_holder"
+      },
+      {
+       "id": "capture_overlay"
+      },
+      {
+       "id": "edge_to_edge_bottom_chin"
+      },
+      {
+       "id": "keyboard_accessory_stub"
+      },
+      {
+       "id": "keyboard_accessory_sheet_stub"
+      },
+      {
+       "id": "bottombar_stub"
+      },
+      {
+       "id": "tab_modal_dialog_container_stub"
+      },
+      {
+       "id": "tab_modal_dialog_container_sibling_view"
+      },
+      {
+       "id": "omnibox_results_container_stub"
+      },
+      {
+       "id": "bottom_container"
+      },
+      {
+       "id": "action_bar_black_background"
+      },
+      {
+       "id": "bottom_controls",
+       "children": [
+        {
+         "id": "bottom_container_slot"
+        }
+       ]
+      },
+      {
+       "id": "bookmark_bar_stub"
+      },
+      {
+       "id": "control_container",
+       "children": [
+        {
+         "id": "toolbar_container",
+         "children": [
+          {
+           "id": "toolbar",
+           "children": [
+            {
+             "id": "home_page_buttons_stub"
+            },
+            {
+             "id": "location_bar_background_view"
+            },
+            {
+             "id": "location_bar",
+             "children": [
+              {
+               "id": "location_bar_status",
+               "children": [
+                {
+                 "id": "location_bar_incognito_badge_stub"
+                },
+                {
+                 "id": "location_bar_status_icon_view",
+                 "children": [
+                  {
+                   "id": "location_bar_status_icon_holding_space"
+                  }
+                 ]
+                },
+                {
+                 "id": "location_bar_verbose_status"
+                },
+                {
+                 "id": "location_bar_verbose_status_separator"
+                },
+                {
+                 "id": "location_bar_verbose_status_extra_space"
+                }
+               ]
+              },
+              {
+               "id": "margin_spacer"
+              },
+              {
+               "id": "action_buttons_segment"
+              },
+              {
+               "id": "location_bar_attachments"
+              },
+              {
+               "id": "fusebox_request_type"
+              }
+             ]
+            },
+            {
+             "id": "toolbar_buttons",
+             "children": [
+              {
+               "id": "optional_toolbar_button_container",
+               "children": [
+                {
+                 "id": "action_chip_label"
+                }
+               ]
+              },
+              {
+               "id": "menu_button_wrapper"
+              }
+             ]
+            }
+           ]
+          },
+          {
+           "id": "find_toolbar_stub"
+          }
+         ]
+        },
+        {
+         "id": "find_toolbar_tablet_stub"
+        }
+       ]
+      },
+      {
+       "id": "toolbar_progress_bar_container"
+      },
+      {
+       "id": "tab_switcher_view_holder_stub"
+      },
+      {
+       "id": "tab_hover_card_holder_stub"
+      },
+      {
+       "id": "message_container"
+      },
+      {
+       "id": "status_indicator_stub"
+      },
+      {
+       "id": "readaloud_mini_player_stub"
+      },
+      {
+       "id": "survey_container"
+      },
+      {
+       "id": "page_zoom_container"
+      },
+      {
+       "id": "link_hover_status_bar_stub"
+      },
+      {
+       "id": "sheet_container"
+      },
+      {
+       "id": "tab_group_ui_dialog_container"
+      },
+      {
+       "id": "loading_fullscreen_container"
       }
      ]
+    },
+    {
+     "id": "menu_anchor_stub"
+    },
+    {
+     "id": "action_mode_bar_stub"
     }
    ]
   }
