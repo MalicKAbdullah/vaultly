@@ -19,6 +19,7 @@ import dev.abdullah.vaultkey.fill.BrowserAllowlist
 import dev.abdullah.vaultkey.fill.DatasetFactory
 import dev.abdullah.vaultkey.fill.FillRequestIntents
 import dev.abdullah.vaultkey.fill.FillSession
+import dev.abdullah.vaultkey.fill.InlineChips
 import dev.abdullah.vaultkey.fill.FillSessionActivity
 import dev.abdullah.vaultkey.fill.FillUnlockActivity
 import dev.abdullah.vaultkey.fill.FormDump
@@ -129,6 +130,8 @@ class VaultlyAutofillService : AutofillService() {
         }
         val ids = usernameIds + passwordIds + codeIds
         val response = FillResponse.Builder()
+        val chips = InlineChips.of(this, request)
+        var datasets = 0
         // With the chosen account armed for this page, "Continue as" comes first.
         session?.let {
             val continueIntent = FillRequestIntents.put(
@@ -138,12 +141,17 @@ class VaultlyAutofillService : AutofillService() {
                 DatasetFactory.locked(
                     this, "Continue as ${it.label}${if (codeOnly) " · code" else ""}", ids,
                     DatasetFactory.authIntent(this, SESSION_REQUEST_CODE, continueIntent),
+                    chips?.takeIf { c -> c.hasRoom(datasets) }?.chip(datasets, "Continue as ${it.label}"),
                 ),
             )
+            datasets++
         }
         // Locked chips never name an account.
         response.addDataset(
-            DatasetFactory.locked(this, "Vaultly", ids, DatasetFactory.authIntent(this, AUTH_REQUEST_CODE, unlockIntent)),
+            DatasetFactory.locked(
+                this, "Vaultly", ids, DatasetFactory.authIntent(this, AUTH_REQUEST_CODE, unlockIntent),
+                chips?.takeIf { c -> c.hasRoom(datasets) }?.chip(datasets, "Vaultly"),
+            ),
         )
         return response.build()
     }

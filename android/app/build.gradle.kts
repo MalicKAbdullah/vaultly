@@ -80,6 +80,9 @@ dependencies {
     implementation("androidx.biometric:biometric:1.1.0")
     // Credential Manager provider API (passkeys and passwords, Android 14+).
     implementation("androidx.credentials:credentials:1.5.0")
+    // Inline suggestion chips in the keyboard (Android 11+): the styled slice
+    // the keyboard renders. Jetpack only, no Play Services.
+    implementation("androidx.autofill:autofill:1.1.0")
 
     testImplementation("junit:junit:4.13.2")
     // Real org.json for JVM unit tests (android.jar only ships stubs).
