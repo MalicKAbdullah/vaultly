@@ -23,7 +23,10 @@ Most password managers ask you to trust their servers with your entire digital l
 
 **Unlock & fill**
 - One **master password**, with optional **fingerprint / face** unlock
-- **Android Autofill** — sign in to other apps *and to websites in your browser* with a tap
+- **Android Autofill** — sign in to other apps *and to websites in your browser*: tap the chip, touch the fingerprint sensor, done. Pick an account once and the next pages of that sign-in (password, then 2FA code) fill with one tap
+- **Save and update logins** — submit a login in another app or browser and Vaultly offers to save it or update the saved password
+- **Cards and addresses** — checkout forms fill from your saved cards and identities
+- **Share one entry** offline (QR codes, or a file plus a one-time code) and print an **emergency kit** with your recovery key
 - **Passkeys** (Android 14+) — websites and apps save passkeys in Vaultly and sign you in with them; saved passwords appear in the same sign-in sheet
 - Built-in **two-factor (TOTP) codes** — your 2FA lives next to your password
 
@@ -47,23 +50,39 @@ Most password managers ask you to trust their servers with your entire digital l
 
 ## 🔓 Autofill: what works where
 
-Vaultly registers as an Android **Autofill Service** (Android 8 / API 26+). When a
-login form appears, Vaultly offers *"Unlock Vaultly to fill"*; you unlock once and
-pick the matching entry, and the credentials are written straight into the form.
+Vaultly registers as an Android **Autofill Service** (Android 8 / API 26+). A login form
+shows a **Vaultly** chip, in the keyboard's suggestion strip on Android 11+ and in the
+dropdown elsewhere. With biometric unlock on, tapping it opens a small sheet over the
+page with the fingerprint prompt; the vault is decrypted natively, without starting the
+app, and the login fills. One saved account for the exact site fills straight away;
+several accounts, or a site Vaultly is not sure of, show a short list once and
+remember the choice. Without biometric unlock the chip continues in the full app, where
+you unlock with the master password and pick the entry.
 
-**Browser web forms are supported alongside native app forms.** When the login
-form lives inside a browser (Chrome and other Autofill-integrated browsers), the
-browser reports the page's **web domain** to the Autofill Framework. Vaultly:
-
-- extracts that web domain from the `AssistStructure` (`ViewNode.getWebDomain()`),
-  walking the whole node tree, and passes it to the entry picker;
-- reads the HTML of each `<input>` (`ViewNode.getHtmlInfo()`) — the `type` and
-  `autocomplete` attributes plus `name`/`id` — so password and username fields are
-  detected even when a website sets no Android autofill hints;
-- ranks vault entries by **host / domain match** (e.g. `accounts.google.com` matches
-  a `google.com` entry), and deliberately ignores the *browser's own* package name
-  (`com.android.chrome`, `org.mozilla.firefox`, …) so the browser never becomes the
-  match signal — the site's domain does.
+- **Pick once per sign-in.** After the first page of a sign-in, the chosen account is kept
+  in memory for two minutes, for that site or app only (plus a bundled table of
+  equivalent domains such as `google.com` / `youtube.com`). The next page shows
+  *Continue as ‹account›* and fills with one tap, no prompt. It ends on screen off, after
+  two minutes, when the last step is filled, on the in-app inactivity lock, or from the
+  entry's **End** button. The *Sign in* button on an entry starts the same thing from the
+  app. Switch it off in Settings.
+- **2FA codes.** Code fields (`one-time-code`, `otp`, a row of one-digit boxes) are filled
+  with the entry's current code at the tap. An optional setting copies the code after a
+  password fill and clears it after 30 seconds (off by default).
+- **Save and update.** After you submit a login, the system asks to save it; Vaultly then
+  opens, unlocks, and offers *Save*, *Update ‹name›* or nothing if it is already saved.
+  The same screen answers Credential Manager's password save on Android 14+. **Vault
+  Health** has a *Change password* button that opens the site's change-password page and
+  sends the new password to the right entry.
+- **Cards and addresses.** A form that names a card number, or two or more address fields,
+  gets the same chip; it asks for the fingerprint every time. Dropdown (`<select>`)
+  fields are left for you to choose.
+- **Which site is it?** A web domain is believed only from a browser whose package and
+  signing certificate are on the bundled privileged-browser list; any other app that
+  claims a domain is treated as an app. A fill goes without asking only for an exact host
+  match or an entry you chose for that site before.
+- Fields are found by autofill hints, HTML `autocomplete`, input type, and whole-word
+  matches on names, never by substring, so a `shipping_address` field is not a PIN.
 
 | Source | Autofill support |
 | :-- | :-- |
@@ -76,8 +95,8 @@ browser reports the page's **web domain** to the Autofill Framework. Vaultly:
 > AuthenticationServices framework) rather than the Android Autofill Service, so it is
 > tracked as future work. Everything else in Vaultly runs on iOS.
 >
-> **Scope.** *Save* requests (offering to capture a brand-new login) are intentionally
-> out of scope — Vaultly only fills existing entries; you add new ones yourself.
+> **Limits.** Saving needs Android 9+. Chrome must be set to *Autofill using another
+> service* for Vaultly to fill and save in it. Accessibility-service tricks are not used.
 
 ## 🔑 Passkeys (Android 14+)
 
@@ -112,7 +131,7 @@ Passwords, passkeys & accounts* (or from Vaultly's Settings → Passkeys).
 **Limits.** Without the Public Suffix List on the device, an RP id that is a
 multi-label public suffix (such as `co.uk`) is not rejected. Digital Asset Links
 `include` statements are not followed. Saving a *new password* through Credential
-Manager is not offered. On Android 13 and older, the Autofill Service above keeps
+Manager is offered on Android 14+. On Android 13 and older, the Autofill Service above keeps
 filling passwords; passkeys need Android 14.
 
 ## 🔄 Sync: how it works
