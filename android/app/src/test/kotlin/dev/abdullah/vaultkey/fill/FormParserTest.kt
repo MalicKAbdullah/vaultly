@@ -121,4 +121,37 @@ class FormParserTest {
     fun `a code field Chrome typed from autocomplete is a code field`() {
         assertEquals(listOf("code"), parse("otp_chrome_type").codes.map { it.label })
     }
+
+    @Test
+    fun `a checkout card form is a card form and its email is not a login field`() {
+        val form = parse("checkout_card")
+        assertEquals(FormKind.CARD, form.kind)
+        assertEquals(
+            setOf(CardField.HOLDER, CardField.NUMBER, CardField.EXP_COMBINED, CardField.CVC),
+            form.card.keys,
+        )
+        assertEquals(listOf("email"), form.usernameLabels())
+    }
+
+    @Test
+    fun `a shipping form is an address form`() {
+        val form = parse("checkout_address")
+        assertEquals(FormKind.ADDRESS, form.kind)
+        assertEquals(
+            setOf(AddressField.FULL_NAME, AddressField.STREET, AddressField.POSTAL, AddressField.EMAIL),
+            form.address.keys,
+        )
+    }
+
+    @Test
+    fun `login forms stay login forms`() {
+        assertEquals(FormKind.LOGIN, parse("github_login").kind)
+        assertEquals(FormKind.LOGIN, parse("signup").kind)
+        assertEquals(FormKind.LOGIN, parse("google_email").kind)
+    }
+
+    @Test
+    fun `an email field alone is not an address form`() {
+        assertEquals(FormKind.LOGIN, parse("otp_by_name").kind)
+    }
 }

@@ -15,6 +15,28 @@ data class TotpParams(
     val period: Int,
 )
 
+/** A saved payment card as an entry stores it. */
+data class CardRecord(
+    val holder: String,
+    val number: String,
+    val expMonth: String,
+    val expYear: String,
+    val cvc: String,
+)
+
+/** A saved identity (name, contact, address) as an entry stores it. */
+data class IdentityRecord(
+    val fullName: String,
+    val email: String,
+    val phone: String,
+    val address1: String,
+    val address2: String,
+    val city: String,
+    val region: String,
+    val postalCode: String,
+    val country: String,
+)
+
 /**
  * Read-only view of one vault entry: the fields filling needs. The vault
  * JSON is written only by Dart (`VaultEntry.toJson`); the contract fixtures
@@ -29,6 +51,8 @@ data class VaultRecord(
     val category: String,
     val totp: TotpParams?,
     val hasPasskey: Boolean,
+    val card: CardRecord? = null,
+    val identity: IdentityRecord? = null,
 )
 
 /**
@@ -94,6 +118,19 @@ object VaultFileReader {
                     )
                 },
                 hasPasskey = e.has("passkey"),
+                card = e.optJSONObject("card")?.let { c ->
+                    CardRecord(
+                        c.getString("holder"), c.getString("number"), c.getString("expMonth"),
+                        c.getString("expYear"), c.getString("cvc"),
+                    )
+                },
+                identity = e.optJSONObject("identity")?.let { i ->
+                    IdentityRecord(
+                        i.getString("fullName"), i.getString("email"), i.getString("phone"),
+                        i.getString("address1"), i.getString("address2"), i.getString("city"),
+                        i.getString("region"), i.getString("postalCode"), i.getString("country"),
+                    )
+                },
             )
         }
     }

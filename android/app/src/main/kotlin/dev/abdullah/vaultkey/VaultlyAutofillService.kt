@@ -11,6 +11,7 @@ import android.service.autofill.FillCallback
 import android.service.autofill.FillRequest
 import android.service.autofill.FillResponse
 import android.service.autofill.SaveCallback
+import android.view.autofill.AutofillId
 import android.service.autofill.SaveInfo
 import android.app.PendingIntent
 import android.service.autofill.SaveRequest
@@ -21,6 +22,8 @@ import dev.abdullah.vaultkey.fill.BrowserAllowlist
 import dev.abdullah.vaultkey.fill.DatasetFactory
 import dev.abdullah.vaultkey.fill.FillRequestIntents
 import dev.abdullah.vaultkey.fill.FillSession
+import dev.abdullah.vaultkey.fill.FormKind
+import dev.abdullah.vaultkey.fill.ParsedForm
 import dev.abdullah.vaultkey.fill.InlineChips
 import dev.abdullah.vaultkey.fill.PendingSave
 import dev.abdullah.vaultkey.fill.FillSessionActivity
@@ -113,6 +116,7 @@ class VaultlyAutofillService : AutofillService() {
         if (Log.isLoggable(TIMING_TAG, Log.DEBUG)) {
             Log.d(TIMING_TAG, "target is ${target::class.simpleName}")
         }
+        if (parsed.kind != FormKind.LOGIN) return respondWithSection(parsed, target)
         // The parser only returns text fields, which all have an autofill id.
         val usernameIds = ArrayList(parsed.usernames.map { it.autofillId!! })
         val passwordIds = ArrayList(parsed.passwords.map { it.autofillId!! })
@@ -168,6 +172,31 @@ class VaultlyAutofillService : AutofillService() {
             response.setSaveInfo(save.build())
         }
         return response.build()
+    }
+
+    /**
+     * A card or address form: one chip, behind the fingerprint. These forms
+     * are not tied to a site, so nothing is confirmed by host and nothing is
+     * filled without the sheet; with a single saved card or identity the
+     * sheet fills it straight away. The full-app flow cannot answer them,
+     * so without a fingerprint key there is nothing to offer.
+     */
+    private fun respondWithSection(parsed: ParsedForm<ViewFieldNode>, target: RequestTarget): FillResponse? {
+        if (!VaultKeyWrap(this).hasWrappedKey()) return null
+        val roles = ArrayList<String>()
+        val ids = ArrayList<AutofillId>()
+        if (parsed.kind == FormKind.CARD) {
+            parsed.card.forEach { (field, node) -> roles.add(field.name); ids.add(node.autofillId!!) }
+        } else {
+            parsed.address.forEach { (field, node) -> roles.add(field.name); ids.add(node.autofillId!!) }
+        }
+        val intent = FillRequestIntents.put(
+            Intent(this, FillUnlockActivity::class.java), target, ArrayList(), ArrayList(), ArrayList(),
+        )
+        FillRequestIntents.putSection(intent, parsed.kind, roles, ids)
+        return FillResponse.Builder().addDataset(
+            DatasetFactory.locked(this, "Vaultly", ids, DatasetFactory.authIntent(this, AUTH_REQUEST_CODE, intent)),
+        ).build()
     }
 
     override fun onSaveRequest(request: SaveRequest, callback: SaveCallback) {
