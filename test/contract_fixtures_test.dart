@@ -8,7 +8,6 @@ import 'package:vaultkey/src/core/interfaces/autofill_bridge.dart';
 import 'package:vaultkey/src/features/autofill/services/autofill_matcher.dart';
 import 'package:vaultkey/src/features/totp/models/totp_config.dart';
 import 'package:vaultkey/src/features/vault/data/vault_repository.dart';
-import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
 
 import 'fakes/fakes.dart';
 import 'fakes/passkey_fixtures.dart';
