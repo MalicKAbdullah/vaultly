@@ -1,0 +1,24 @@
+{
+ "roots": [
+  {
+   "id": "content",
+   "children": [
+    {
+     "domain": "example.com",
+     "children": [
+      {
+       "input": {
+        "type": "text",
+        "name": "pin",
+        "autocomplete": "one-time-code",
+        "inputmode": "numeric"
+       },
+       "text": true,
+       "domain": "example.com"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

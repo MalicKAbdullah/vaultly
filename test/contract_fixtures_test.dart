@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vaultkey/src/core/interfaces/autofill_bridge.dart';
 import 'package:vaultkey/src/features/autofill/services/autofill_matcher.dart';
 import 'package:vaultkey/src/features/totp/models/totp_config.dart';
+import 'package:vaultkey/src/features/totp/services/totp_generator.dart';
 import 'package:vaultkey/src/features/vault/data/vault_repository.dart';
 
 import 'fakes/fakes.dart';
@@ -110,6 +111,24 @@ void main() {
     final json = const JsonEncoder.withIndent('  ').convert(cases);
     if (write) file('matcher_vectors.json').writeAsStringSync('$json\n');
     expect('$json\n', file('matcher_vectors.json').readAsStringSync());
+  });
+
+  test('TOTP codes match the RFC 6238 vectors both sides read', () {
+    final vectors = jsonDecode(file('totp_vectors.json').readAsStringSync())
+        as List<dynamic>;
+    for (final v in vectors.cast<Map<String, dynamic>>()) {
+      final config = TotpConfig(
+        secret: v['secret'] as String,
+        algorithm: TotpAlgorithm.parse(v['algorithm'] as String),
+        digits: v['digits'] as int,
+        period: v['period'] as int,
+      );
+      final time = DateTime.fromMillisecondsSinceEpoch(
+        (v['unixSeconds'] as int) * 1000,
+        isUtc: true,
+      );
+      expect(TotpGenerator.codeAt(config, time), v['code'], reason: '$v');
+    }
   });
 }
 

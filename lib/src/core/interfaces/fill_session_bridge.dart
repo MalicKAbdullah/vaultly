@@ -24,6 +24,11 @@ abstract interface class IFillSessionBridge {
   /// Whether choosing an account keeps it ready for the next pages.
   Future<bool> isEnabled();
   Future<void> setEnabled(bool enabled);
+
+  /// Whether the current 2FA code is copied after a password fill. Off by
+  /// default.
+  Future<bool> isCopyCodeEnabled();
+  Future<void> setCopyCode(bool enabled);
 }
 
 final class MethodChannelFillSessionBridge implements IFillSessionBridge {
@@ -61,6 +66,14 @@ final class MethodChannelFillSessionBridge implements IFillSessionBridge {
   @override
   Future<void> setEnabled(bool enabled) =>
       _invoke<void>('setEnabled', {'enabled': enabled});
+
+  @override
+  Future<bool> isCopyCodeEnabled() async =>
+      await _invoke<bool>('isCopyCodeEnabled') ?? false;
+
+  @override
+  Future<void> setCopyCode(bool enabled) =>
+      _invoke<void>('setCopyCode', {'enabled': enabled});
 
   Future<T?> _invoke<T>(String method, [Object? arguments]) async {
     try {

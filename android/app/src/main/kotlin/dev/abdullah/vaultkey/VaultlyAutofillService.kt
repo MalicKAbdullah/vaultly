@@ -111,25 +111,32 @@ class VaultlyAutofillService : AutofillService() {
         // The parser only returns text fields, which all have an autofill id.
         val usernameIds = ArrayList(parsed.usernames.map { it.autofillId!! })
         val passwordIds = ArrayList(parsed.passwords.map { it.autofillId!! })
+        val codeIds = ArrayList(parsed.codes.map { it.autofillId!! })
+        val codeOnly = usernameIds.isEmpty() && passwordIds.isEmpty()
 
         // Fingerprint users get the sheet that fills without starting Flutter;
         // everyone else continues in the full app, which can derive the key
         // from the master password.
-        val unlockIntent = if (VaultKeyWrap(this).hasWrappedKey()) {
-            FillRequestIntents.put(Intent(this, FillUnlockActivity::class.java), target, usernameIds, passwordIds)
+        val biometric = VaultKeyWrap(this).hasWrappedKey()
+        val session = FillSession.current(target)?.takeIf { codeIds.isEmpty() || it.totp != null }
+        // The full-app flow cannot answer a code page, so without a
+        // fingerprint key or a live session there is nothing to offer.
+        if (codeOnly && !biometric && session == null) return null
+        val unlockIntent = if (biometric) {
+            FillRequestIntents.put(Intent(this, FillUnlockActivity::class.java), target, usernameIds, passwordIds, codeIds)
         } else {
             FillRequestIntents.mainActivity(this, target, usernameIds, passwordIds)
         }
-        val ids = usernameIds + passwordIds
+        val ids = usernameIds + passwordIds + codeIds
         val response = FillResponse.Builder()
         // With the chosen account armed for this page, "Continue as" comes first.
-        FillSession.current(target)?.let { session ->
+        session?.let {
             val continueIntent = FillRequestIntents.put(
-                Intent(this, FillSessionActivity::class.java), target, usernameIds, passwordIds,
+                Intent(this, FillSessionActivity::class.java), target, usernameIds, passwordIds, codeIds,
             )
             response.addDataset(
                 DatasetFactory.locked(
-                    this, "Continue as ${session.label}", ids,
+                    this, "Continue as ${it.label}${if (codeOnly) " · code" else ""}", ids,
                     DatasetFactory.authIntent(this, SESSION_REQUEST_CODE, continueIntent),
                 ),
             )

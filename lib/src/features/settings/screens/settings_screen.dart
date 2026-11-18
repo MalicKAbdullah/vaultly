@@ -189,6 +189,23 @@ class SettingsScreen extends ConsumerWidget {
                           },
                         ),
                       ),
+                      SettingsTile(
+                        icon: Icons.pin_outlined,
+                        title: 'Copy 2FA code after filling',
+                        subtitle: 'Puts the code on the clipboard for 30 '
+                            'seconds after a password fill',
+                        trailing: Switch(
+                          value:
+                              ref.watch(copyCodeEnabledProvider).valueOrNull ??
+                                  false,
+                          onChanged: (v) async {
+                            await ref
+                                .read(fillSessionBridgeProvider)
+                                .setCopyCode(v);
+                            ref.invalidate(copyCodeEnabledProvider);
+                          },
+                        ),
+                      ),
                       PopupMenuButton<Duration>(
                         tooltip: 'Auto-lock',
                         initialValue: autoLock,

@@ -13,6 +13,7 @@ object FillRequestIntents {
     const val EXTRA_CERT = "vaultly_target_cert"
     const val EXTRA_USERNAME_IDS = "vaultly_username_ids"
     const val EXTRA_PASSWORD_IDS = "vaultly_password_ids"
+    const val EXTRA_CODE_IDS = "vaultly_code_ids"
 
     private const val KIND_WEB = "web"
     private const val KIND_APP = "app"
@@ -22,6 +23,7 @@ object FillRequestIntents {
         target: RequestTarget,
         usernameIds: ArrayList<AutofillId>,
         passwordIds: ArrayList<AutofillId>,
+        codeIds: ArrayList<AutofillId>,
     ): Intent = intent.apply {
         when (target) {
             is RequestTarget.Web -> {
@@ -37,6 +39,7 @@ object FillRequestIntents {
         }
         putParcelableArrayListExtra(EXTRA_USERNAME_IDS, usernameIds)
         putParcelableArrayListExtra(EXTRA_PASSWORD_IDS, passwordIds)
+        putParcelableArrayListExtra(EXTRA_CODE_IDS, codeIds)
     }
 
     fun target(intent: Intent): RequestTarget {

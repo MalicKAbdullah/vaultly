@@ -7,8 +7,10 @@ class ParsedForm<N>(
     val usernames: List<N>,
     val passwords: List<N>,
     val webDomain: String?,
+    /** One-time-code fields: a single input, or a row of one-digit boxes in order. */
+    val codes: List<N> = emptyList(),
 ) {
-    val isFillable: Boolean get() = usernames.isNotEmpty() || passwords.isNotEmpty()
+    val isFillable: Boolean get() = usernames.isNotEmpty() || passwords.isNotEmpty() || codes.isNotEmpty()
 }
 
 /**
@@ -29,11 +31,19 @@ object FormParser {
         "email", "emailaddress", "account", "identifier",
     )
 
-    private enum class Kind { USERNAME, PASSWORD }
+    private enum class Kind { USERNAME, PASSWORD, CODE }
+
+    private val codeWords = setOf("otp", "totp", "2fa", "mfa", "tfa")
+
+    /** `verification code`, `security code`, `authenticator code`: `code` beside one of these. */
+    private val codeQualifiers = setOf("verification", "verify", "security", "authenticator", "authentication")
+    private const val MAX_BOX_ROW = 8
+    private const val MIN_BOX_ROW = 4
 
     fun <N : FieldNode<N>> parse(roots: List<N>): ParsedForm<N> {
         val usernames = ArrayList<N>()
         val passwords = ArrayList<N>()
+        val codes = ArrayList<N>()
         var webDomain: String? = null
 
         fun visit(node: N) {
@@ -48,13 +58,15 @@ object FormParser {
                 when (kind) {
                     Kind.PASSWORD -> passwords.add(node)
                     Kind.USERNAME -> usernames.add(node)
+                    Kind.CODE -> codes.add(node)
                     null -> Unit
                 }
             }
             node.children.forEach(::visit)
+            if (codes.isEmpty()) codes.addAll(digitBoxes(node))
         }
         roots.forEach(::visit)
-        return ParsedForm(usernames, passwords, webDomain)
+        return ParsedForm(usernames, passwords, webDomain, codes)
     }
 
     /** `getWebDomain()` is documented as a bare host; scheme, port and path are stripped all the same. */
@@ -66,14 +78,44 @@ object FormParser {
         return value.removePrefix("www.")
     }
 
+    /**
+     * A row of 4 to 8 sibling inputs that each take one character and
+     * carry no other meaning: the boxes of a code entered digit by digit.
+     */
+    private fun <N : FieldNode<N>> digitBoxes(parent: N): List<N> {
+        val boxes = parent.children.filter {
+            it.isTextField && it.inputAttributes["maxlength"] == "1" && classify(it, it.inputAttributes) == null
+        }
+        return if (boxes.size in MIN_BOX_ROW..MAX_BOX_ROW) boxes else emptyList()
+    }
+
+    private fun isCodeByWords(words: Set<String>, attributes: Map<String, String>): Boolean {
+        val maxLength = attributes["maxlength"]?.toIntOrNull()
+        if (maxLength != null && maxLength > MAX_BOX_ROW) return false
+        if (words.any { it in codeWords }) return true
+        // The word splitter breaks `2fa` into `2` and `fa`, and `two-factor` into two words.
+        if ("2" in words && "fa" in words) return true
+        if ("two" in words && "factor" in words) return true
+        return "code" in words && words.any { it in codeQualifiers }
+    }
+
     private fun classify(node: FieldNode<*>, attributes: Map<String, String>): Kind? {
         for (hint in node.autofillHints) {
             val h = hint.lowercase()
+            if (h.contains("otp")) return Kind.CODE
             if (h.contains("password")) return Kind.PASSWORD
             if (h.contains("username") || h.contains("email")) return Kind.USERNAME
         }
 
         classifyHtml(attributes)?.let { return it }
+
+        val words = buildSet {
+            addAll(words(node.hint))
+            addAll(words(node.idEntry))
+            addAll(words(attributes["name"]))
+            addAll(words(attributes["id"]))
+        }
+        if (isCodeByWords(words, attributes)) return Kind.CODE
 
         val inputType = node.inputType
         if (inputType and InputType.TYPE_MASK_CLASS == InputType.TYPE_CLASS_TEXT) {
@@ -89,12 +131,6 @@ object FormParser {
             }
         }
 
-        val words = buildSet {
-            addAll(words(node.hint))
-            addAll(words(node.idEntry))
-            addAll(words(attributes["name"]))
-            addAll(words(attributes["id"]))
-        }
         if (words.any { it in passwordWords }) return Kind.PASSWORD
         if (words.any { it in usernameWords }) return Kind.USERNAME
         return null
@@ -103,6 +139,7 @@ object FormParser {
     private fun classifyHtml(attributes: Map<String, String>): Kind? {
         if (attributes.isEmpty()) return null
         val autocomplete = attributes["autocomplete"].orEmpty().lowercase().split(' ')
+        if ("one-time-code" in autocomplete) return Kind.CODE
         if (autocomplete.any { it.endsWith("password") }) return Kind.PASSWORD
         if (autocomplete.any { it == "username" || it == "email" }) return Kind.USERNAME
         return when (attributes["type"]?.lowercase()) {
