@@ -116,4 +116,9 @@ class FormParserTest {
         assertEquals(emptyList<String>(), parse("not_otp_zip").codes.map { it.label })
         assertEquals(emptyList<String>(), parse("shipping_address").codes.map { it.label })
     }
+
+    @Test
+    fun `a code field Chrome typed from autocomplete is a code field`() {
+        assertEquals(listOf("code"), parse("otp_chrome_type").codes.map { it.label })
+    }
 }

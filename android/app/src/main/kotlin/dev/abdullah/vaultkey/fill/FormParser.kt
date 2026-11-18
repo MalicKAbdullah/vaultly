@@ -37,6 +37,7 @@ object FormParser {
 
     /** `verification code`, `security code`, `authenticator code`: `code` beside one of these. */
     private val codeQualifiers = setOf("verification", "verify", "security", "authenticator", "authentication")
+    private val CHROME_TYPE_KEYS = listOf("ua-autofill-hints", "computed-autofill-hints")
     private const val MAX_BOX_ROW = 8
     private const val MIN_BOX_ROW = 4
 
@@ -140,6 +141,8 @@ object FormParser {
         if (attributes.isEmpty()) return null
         val autocomplete = attributes["autocomplete"].orEmpty().lowercase().split(' ')
         if ("one-time-code" in autocomplete) return Kind.CODE
+        // Chrome reports the field type it derived from `autocomplete` here, not the attribute itself.
+        if (CHROME_TYPE_KEYS.any { attributes[it]?.contains("ONE_TIME_CODE") == true }) return Kind.CODE
         if (autocomplete.any { it.endsWith("password") }) return Kind.PASSWORD
         if (autocomplete.any { it == "username" || it == "email" }) return Kind.USERNAME
         return when (attributes["type"]?.lowercase()) {
