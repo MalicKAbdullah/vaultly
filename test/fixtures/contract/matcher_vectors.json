@@ -1,0 +1,61 @@
+[
+  {
+    "domain": "github.com",
+    "ranked": [
+      "a1"
+    ]
+  },
+  {
+    "domain": "accounts.google.com",
+    "ranked": [
+      "a2",
+      "a3"
+    ]
+  },
+  {
+    "domain": "google.com",
+    "ranked": [
+      "a3",
+      "a2"
+    ]
+  },
+  {
+    "domain": "mail.google.com",
+    "ranked": [
+      "a3",
+      "a2"
+    ]
+  },
+  {
+    "domain": "notgithub.com",
+    "ranked": []
+  },
+  {
+    "domain": "webauthn.io",
+    "ranked": [
+      "a5"
+    ]
+  },
+  {
+    "package": "com.github.android",
+    "ranked": [
+      "a1"
+    ]
+  },
+  {
+    "package": "com.google.android.gm",
+    "ranked": [
+      "a3",
+      "a2"
+    ]
+  },
+  {
+    "package": "com.example.bank",
+    "ranked": [
+      "a4"
+    ]
+  },
+  {
+    "ranked": []
+  }
+]
