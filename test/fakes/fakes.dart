@@ -216,6 +216,11 @@ final class FakeAutofillBridge implements IAutofillBridge {
     openSettingsCalls++;
     return true;
   }
+
+  int forgetCalls = 0;
+
+  @override
+  Future<void> forgetFillState() async => forgetCalls++;
 }
 
 /// Builds a [VaultEntry] with sensible defaults for tests.
