@@ -708,8 +708,7 @@ void main() {
   });
 
   testWidgets('store-5-import', skip: skip != null, (tester) async {
-    await storeShot(tester, 5, ImportScreen.new,
-        overrides: await _overrides());
+    await storeShot(tester, 5, ImportScreen.new, overrides: await _overrides());
   });
 
   testWidgets('store-6-unlock', skip: skip != null, (tester) async {
