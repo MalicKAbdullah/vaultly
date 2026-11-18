@@ -33,6 +33,25 @@ final class AutofillRequestNotifier
   }
 }
 
+/// The login this launch was started to save (null on a normal launch).
+/// The router sends unlocked sessions to the save screen while this is set.
+final pendingSaveProvider =
+    AsyncNotifierProvider<PendingSaveNotifier, CapturedLogin?>(
+  PendingSaveNotifier.new,
+);
+
+final class PendingSaveNotifier extends AsyncNotifier<CapturedLogin?> {
+  @override
+  Future<CapturedLogin?> build() =>
+      ref.read(autofillBridgeProvider).pendingSave();
+
+  /// Closes Vaultly, back to the page, after [message].
+  Future<void> finish({String? message}) async {
+    await ref.read(autofillBridgeProvider).finishSave(message: message);
+    state = const AsyncData(null);
+  }
+}
+
 /// Whether autofill is available on this device and whether Vaultly is the
 /// active provider (drives the Settings card).
 typedef AutofillStatus = ({bool supported, bool enabled});

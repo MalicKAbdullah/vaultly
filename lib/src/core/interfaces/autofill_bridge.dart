@@ -26,6 +26,28 @@ final class AutofillFillRequest {
   int get hashCode => Object.hash(domain, package);
 }
 
+/// A login the user just submitted in another app or a browser, offered to
+/// Vaultly to save.
+@immutable
+final class CapturedLogin {
+  const CapturedLogin({
+    required this.username,
+    required this.password,
+    this.host,
+    this.package,
+  });
+
+  final String username;
+  final String password;
+
+  /// The page's host, set only for a trusted browser (like
+  /// [AutofillFillRequest.domain]).
+  final String? host;
+
+  /// The app's package, set only when [host] is not.
+  final String? package;
+}
+
 /// Platform seam for the Android autofill flow. The real implementation
 /// talks to MainActivity over a MethodChannel; tests use a fake.
 abstract interface class IAutofillBridge {
@@ -42,6 +64,13 @@ abstract interface class IAutofillBridge {
 
   /// Abandons the fill request and closes Vaultly.
   Future<void> cancel();
+
+  /// The login this launch was started to save, or null.
+  Future<CapturedLogin?> pendingSave();
+
+  /// Drops the captured login and closes Vaultly. [message] is shown to the
+  /// user on the way out.
+  Future<void> finishSave({String? message});
 
   /// Whether this device supports autofill at all (Android 8+).
   Future<bool> isSupported();
@@ -90,6 +119,22 @@ final class MethodChannelAutofillBridge implements IAutofillBridge {
 
   @override
   Future<void> cancel() => _invoke<void>('cancel');
+
+  @override
+  Future<CapturedLogin?> pendingSave() async {
+    final map = await _invoke<Map<Object?, Object?>>('pendingSave');
+    if (map == null) return null;
+    return CapturedLogin(
+      username: map['username'] as String? ?? '',
+      password: map['password'] as String,
+      host: map['host'] as String?,
+      package: map['package'] as String?,
+    );
+  }
+
+  @override
+  Future<void> finishSave({String? message}) =>
+      _invoke<void>('finishSave', {'message': message});
 
   @override
   Future<bool> isSupported() async =>

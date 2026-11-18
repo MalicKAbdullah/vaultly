@@ -219,6 +219,17 @@ final class FakeAutofillBridge implements IAutofillBridge {
   }
 
   int forgetCalls = 0;
+  CapturedLogin? save;
+  final List<String?> finishedSaves = [];
+
+  @override
+  Future<CapturedLogin?> pendingSave() async => save;
+
+  @override
+  Future<void> finishSave({String? message}) async {
+    finishedSaves.add(message);
+    save = null;
+  }
 
   @override
   Future<void> forgetFillState() async => forgetCalls++;

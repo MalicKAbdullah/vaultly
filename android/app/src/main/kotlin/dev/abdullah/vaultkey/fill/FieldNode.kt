@@ -30,6 +30,10 @@ interface FieldNode<out N : FieldNode<N>> {
 class ViewFieldNode(private val node: AssistStructure.ViewNode) : FieldNode<ViewFieldNode> {
     val autofillId: AutofillId? get() = node.autofillId
 
+    /** What the user typed, once the page has been submitted. */
+    val enteredText: String?
+        get() = node.autofillValue?.takeIf { it.isText }?.textValue?.toString()
+
     override val idEntry: String? get() = node.idEntry
     override val hint: String? get() = node.hint
     override val autofillHints: List<String> get() = node.autofillHints?.toList().orEmpty()
