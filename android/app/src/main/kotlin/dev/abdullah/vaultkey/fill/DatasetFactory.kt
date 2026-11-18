@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.service.autofill.Dataset
+import android.service.autofill.InlinePresentation
 import android.view.autofill.AutofillId
 import android.view.autofill.AutofillValue
 import android.widget.RemoteViews
@@ -31,10 +32,13 @@ object DatasetFactory {
         label: String,
         ids: List<AutofillId>,
         authentication: PendingIntent,
+        inline: InlinePresentation? = null,
     ): Dataset {
         val presentation = presentation(context, label)
         return Dataset.Builder(presentation).apply {
-            ids.forEach { setValue(it, null, presentation) }
+            ids.forEach {
+                if (inline != null) setValue(it, null, presentation, inline) else setValue(it, null, presentation)
+            }
             setAuthentication(authentication.intentSender)
         }.build()
     }
