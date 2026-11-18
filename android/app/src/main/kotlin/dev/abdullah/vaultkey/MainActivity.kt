@@ -11,6 +11,7 @@ import android.view.autofill.AutofillId
 import android.view.autofill.AutofillManager
 import android.view.autofill.AutofillValue
 import android.widget.RemoteViews
+import dev.abdullah.vaultkey.print.EmergencyKitPrinter
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -66,6 +67,8 @@ class MainActivity : FlutterFragmentActivity() {
             .setMethodCallHandler(BiometricKeyVault(this))
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CredentialChannel.CHANNEL)
             .setMethodCallHandler(CredentialChannel(this))
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, EmergencyKitPrinter.CHANNEL)
+            .setMethodCallHandler(EmergencyKitPrinter(this))
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {

@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vaultkey/src/core/di.dart';
 import 'package:vaultkey/src/features/auth/providers/auth_providers.dart';
 import 'package:vaultkey/src/features/auth/services/master_auth_service.dart';
+import 'package:vaultkey/src/features/auth/widgets/recovery_key_scanner.dart';
 
 /// Locked state: master password entry with optional biometric unlock and
 /// an escalating-cooldown countdown after repeated failures.
@@ -311,6 +312,15 @@ class _RecoveryFormState extends ConsumerState<_RecoveryForm> {
     if (mounted) setState(() => _busy = false);
   }
 
+  Future<void> _scanKey() async {
+    final scanned = await RecoveryKeyScanner.scan(context);
+    if (scanned == null || !mounted) return;
+    setState(() {
+      _key.text = scanned;
+      _keyError = null;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = SuiteColors.of(context);
@@ -348,6 +358,11 @@ class _RecoveryFormState extends ConsumerState<_RecoveryForm> {
                   errorText: _keyError,
                   textInputAction: TextInputAction.next,
                   onChanged: (_) => setState(() => _keyError = null),
+                  suffixIcon: IconButton(
+                    tooltip: 'Scan from emergency kit',
+                    icon: const Icon(Icons.qr_code_scanner_rounded),
+                    onPressed: _scanKey,
+                  ),
                 ),
               ),
               const SizedBox(height: LockLayout.gap),
