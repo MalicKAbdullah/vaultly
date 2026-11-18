@@ -1,0 +1,30 @@
+{
+ "roots": [
+  {
+   "id": "content",
+   "children": [
+    {
+     "domain": "forum.example",
+     "children": [
+      {
+       "input": {
+        "type": "text",
+        "name": "user_name"
+       },
+       "text": true,
+       "domain": "forum.example"
+      },
+      {
+       "input": {
+        "type": "text",
+        "name": "pin"
+       },
+       "text": true,
+       "domain": "forum.example"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

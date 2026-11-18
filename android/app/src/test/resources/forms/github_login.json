@@ -1,0 +1,34 @@
+{
+ "roots": [
+  {
+   "id": "content",
+   "children": [
+    {
+     "domain": "github.com",
+     "children": [
+      {
+       "input": {
+        "type": "text",
+        "name": "login",
+        "id": "login_field",
+        "autocomplete": "username"
+       },
+       "text": true,
+       "domain": "github.com"
+      },
+      {
+       "input": {
+        "type": "password",
+        "name": "password",
+        "id": "password",
+        "autocomplete": "current-password"
+       },
+       "text": true,
+       "domain": "github.com"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

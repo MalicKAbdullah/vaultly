@@ -5,6 +5,7 @@ import android.content.pm.Signature
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.credentials.provider.CallingAppInfo
+import dev.abdullah.vaultkey.fill.BrowserAllowlist
 import dev.abdullah.vaultkey.passkey.AppSigning
 import dev.abdullah.vaultkey.passkey.AssetLinks
 import dev.abdullah.vaultkey.passkey.RpIdRules
@@ -53,18 +54,6 @@ sealed class CredentialCaller {
         private const val ASSET_LINKS_MAX_BYTES = 256 * 1024
         private val HOSTNAME = Regex("^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$")
 
-        private var allowlist: String? = null
-
-        /**
-         * Google's list of browsers trusted to report a web origin
-         * (gstatic.com/gpm-passkeys-privileged-apps/apps.json), bundled so
-         * the check works offline.
-         */
-        private fun privilegedAllowlist(context: Context): String =
-            allowlist ?: context.resources.openRawResource(R.raw.privileged_browsers)
-                .bufferedReader()
-                .use { it.readText() }
-                .also { allowlist = it }
 
         /**
          * Identifies the caller. A web origin is accepted only from a browser
@@ -74,7 +63,7 @@ sealed class CredentialCaller {
         @RequiresApi(Build.VERSION_CODES.P)
         fun resolve(context: Context, info: CallingAppInfo): CredentialCaller {
             val origin = try {
-                info.getOrigin(privilegedAllowlist(context))
+                info.getOrigin(BrowserAllowlist.rawJson(context))
             } catch (_: IllegalStateException) {
                 throw RejectedRequest("${info.packageName} is not a recognised browser.")
             }

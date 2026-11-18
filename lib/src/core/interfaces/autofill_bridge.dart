@@ -7,10 +7,13 @@ import 'package:flutter/services.dart';
 final class AutofillFillRequest {
   const AutofillFillRequest({this.domain, this.package});
 
-  /// Web domain of the page being filled, when the form is in a browser.
+  /// Host of the page being filled, set only when the page is shown by a
+  /// browser whose package and signing certificate Vaultly trusts to
+  /// report it. Null for every other request.
   final String? domain;
 
-  /// Package name of the requesting Android app.
+  /// Package name of the requesting app, set only when [domain] is not:
+  /// for a trusted browser the package names the browser, not the site.
   final String? package;
 
   @override
