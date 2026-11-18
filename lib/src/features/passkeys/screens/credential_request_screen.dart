@@ -3,7 +3,9 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vaultkey/src/core/interfaces/autofill_bridge.dart';
 import 'package:vaultkey/src/core/interfaces/credential_bridge.dart';
+import 'package:vaultkey/src/features/autofill/screens/save_login_screen.dart';
 import 'package:vaultkey/src/features/passkeys/providers/credential_providers.dart';
 import 'package:vaultkey/src/features/passkeys/services/passkey_vault.dart';
 import 'package:vaultkey/src/features/vault/providers/vault_providers.dart';
@@ -35,6 +37,22 @@ class CredentialRequestScreen extends ConsumerWidget {
           message: 'Filling your password…',
           answer: (notifier) => notifier.fillPassword(request),
           missing: 'This password is no longer in your vault.',
+        ),
+      PasswordSaveRequest() => LoginCaptureView(
+          login: CapturedLogin(
+            username: request.username,
+            password: request.password,
+            host: request.domain,
+            package: request.package,
+          ),
+          // Closing with no message is "not now"; a stored password is
+          // reported to the asking app.
+          onFinish: (message) {
+            final notifier = ref.read(credentialRequestProvider.notifier);
+            return message == null
+                ? notifier.cancel()
+                : notifier.finishPasswordSave();
+          },
         ),
       RejectedCredentialRequest() => _ProblemView(message: request.message),
       null => const Scaffold(body: Center(child: CircularProgressIndicator())),

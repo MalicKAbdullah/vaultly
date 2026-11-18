@@ -63,6 +63,41 @@ void main() {
       expect(saved.passkey!.credentialId, 'bmV3LWNyZWQ');
     });
 
+    testWidgets('a password an app asks to save is stored and reported',
+        (tester) async {
+      final c = await pump(
+        tester,
+        home: const CredentialRequestScreen(),
+        request: const PasswordSaveRequest(
+          username: 'ada',
+          password: 'pw',
+          domain: 'example.org',
+        ),
+      );
+      expect(find.text('Save password to Vaultly?'), findsOneWidget);
+      await tester.tap(find.text('Save'));
+      await tester.pump();
+      await tester.pump();
+      expect(bridge.calls, ['finishPasswordSave']);
+      expect(c.read(vaultEntriesProvider).requireValue.single.password, 'pw');
+    });
+
+    testWidgets('Not now answers the asking app with a cancellation',
+        (tester) async {
+      await pump(
+        tester,
+        home: const CredentialRequestScreen(),
+        request: const PasswordSaveRequest(
+          username: 'ada',
+          password: 'pw',
+          package: 'com.example.shop',
+        ),
+      );
+      await tester.tap(find.text('Not now'));
+      await tester.pump();
+      expect(bridge.calls, ['cancel']);
+    });
+
     testWidgets('an excluded passkey already in the vault is not duplicated',
         (tester) async {
       await pump(

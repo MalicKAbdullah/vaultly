@@ -80,6 +80,23 @@ final class PasswordSignInRequest extends CredentialRequest {
   final String entryId;
 }
 
+/// An app or a browser asked Vaultly to keep a password (Credential
+/// Manager's `createCredential`). [domain] is set only for a page shown by a
+/// trusted browser, [package] only for an app.
+final class PasswordSaveRequest extends CredentialRequest {
+  const PasswordSaveRequest({
+    required this.username,
+    required this.password,
+    this.domain,
+    this.package,
+  });
+
+  final String username;
+  final String password;
+  final String? domain;
+  final String? package;
+}
+
 /// A request Vaultly refuses (wrong site for the origin, unknown browser,
 /// unsupported key type…). [message] says why.
 final class RejectedCredentialRequest extends CredentialRequest {
@@ -115,6 +132,9 @@ abstract interface class ICredentialBridge {
 
   /// Signs the [PasskeySignInRequest] challenge with [passkey].
   Future<void> signIn(PasskeyCredential passkey);
+
+  /// Tells the app that asked that its [PasswordSaveRequest] was stored.
+  Future<void> finishPasswordSave();
 
   /// Answers a [PasswordSignInRequest] with [entry]'s credentials.
   Future<void> fillPassword(VaultEntry entry);
@@ -170,6 +190,12 @@ final class MethodChannelCredentialBridge implements ICredentialBridge {
           caller: map['caller']! as String,
         ),
       'password' => PasswordSignInRequest(entryId: map['entryId']! as String),
+      'savePassword' => PasswordSaveRequest(
+          username: map['username']! as String,
+          password: map['password']! as String,
+          domain: map['domain'] as String?,
+          package: map['package'] as String?,
+        ),
       'invalid' => RejectedCredentialRequest(map['message']! as String),
       final kind => throw StateError('Unknown credential request $kind'),
     };
@@ -225,6 +251,10 @@ final class MethodChannelCredentialBridge implements ICredentialBridge {
         'username': entry.username,
         'password': entry.password,
       });
+
+  @override
+  Future<void> finishPasswordSave() =>
+      _channel.invokeMethod<void>('finishPasswordSave');
 
   @override
   Future<void> cancel({bool excluded = false}) =>

@@ -10,6 +10,7 @@ import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.provider.AuthenticationAction
 import androidx.credentials.provider.BeginCreateCredentialRequest
 import androidx.credentials.provider.BeginCreateCredentialResponse
+import androidx.credentials.provider.BeginCreatePasswordCredentialRequest
 import androidx.credentials.provider.BeginCreatePublicKeyCredentialRequest
 import androidx.credentials.provider.BeginGetCredentialRequest
 import androidx.credentials.provider.BeginGetCredentialResponse
@@ -37,16 +38,21 @@ class VaultlyCredentialProviderService : CredentialProviderService() {
         cancellationSignal: CancellationSignal,
         callback: OutcomeReceiver<BeginCreateCredentialResponse, CreateCredentialException>,
     ) {
-        // Saving new passwords through Credential Manager is not offered;
-        // only passkeys are created here.
-        if (request !is BeginCreatePublicKeyCredentialRequest) {
-            callback.onResult(BeginCreateCredentialResponse.Builder().build())
-            return
+        // Passkeys and passwords can be saved; other credential types are not ours.
+        val (kind, description) = when (request) {
+            is BeginCreatePublicKeyCredentialRequest ->
+                CredentialRequestSession.KIND_CREATE to R.string.credential_create_description
+            is BeginCreatePasswordCredentialRequest ->
+                CredentialRequestSession.KIND_CREATE_PASSWORD to R.string.credential_create_password_description
+            else -> {
+                callback.onResult(BeginCreateCredentialResponse.Builder().build())
+                return
+            }
         }
         val entry = CreateEntry.Builder(
             getString(R.string.credential_account_name),
-            CredentialRequestSession.pendingIntent(this, CredentialRequestSession.KIND_CREATE),
-        ).setDescription(getString(R.string.credential_create_description)).build()
+            CredentialRequestSession.pendingIntent(this, kind),
+        ).setDescription(getString(description)).build()
         callback.onResult(BeginCreateCredentialResponse.Builder().addCreateEntry(entry).build())
     }
 

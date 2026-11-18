@@ -84,6 +84,9 @@ final class CredentialRequestNotifier
     return false;
   }
 
+  /// Tells the asking app its password was stored (the vault write is done).
+  Future<void> finishPasswordSave() => _bridge.finishPasswordSave();
+
   Future<void> cancel({bool excluded = false}) =>
       _bridge.cancel(excluded: excluded);
 }
