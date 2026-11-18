@@ -19,6 +19,8 @@ import 'package:vaultkey/src/features/passkeys/providers/credential_providers.da
 import 'package:vaultkey/src/features/passkeys/screens/credential_request_screen.dart';
 import 'package:vaultkey/src/features/settings/screens/change_master_password_screen.dart';
 import 'package:vaultkey/src/features/settings/screens/emergency_kit_screen.dart';
+import 'package:vaultkey/src/features/share/screens/receive_entry_screen.dart';
+import 'package:vaultkey/src/features/share/screens/share_entry_screen.dart';
 import 'package:vaultkey/src/features/settings/screens/settings_screen.dart';
 import 'package:vaultkey/src/features/sync/screens/sync_screen.dart';
 import 'package:vaultkey/src/features/vault/screens/entry_detail_screen.dart';
@@ -42,11 +44,14 @@ abstract final class AppRoutes {
   static const String autofillPicker = '/autofill-picker';
   static const String recoveryKey = '/recovery-key';
   static const String emergencyKit = '/emergency-kit';
+  static const String receiveEntry = '/receive';
   static const String credentialRequest = '/credential-request';
 
   static String entryDetail(String id) => '/entry/$id';
 
   static String editEntry(String id) => '/entry/$id/edit';
+
+  static String shareEntry(String id) => '/entry/$id/share';
 }
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -195,6 +200,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.emergencyKit,
         parentNavigatorKey: _rootNavigatorKey,
         builder: (_, __) => const EmergencyKitScreen(),
+      ),
+      GoRoute(
+        path: '/entry/:id/share',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (_, state) =>
+            ShareEntryScreen(entryId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: AppRoutes.receiveEntry,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (_, __) => const ReceiveEntryScreen(),
       ),
       GoRoute(
         path: AppRoutes.sync,

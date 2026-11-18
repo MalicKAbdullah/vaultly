@@ -221,6 +221,11 @@ class _EntryDetailScreenState extends ConsumerState<EntryDetailScreen> {
                 .toggleFavorite(entry.id),
           ),
           IconButton(
+            tooltip: 'Share',
+            icon: const Icon(Icons.ios_share_rounded),
+            onPressed: () => context.push(AppRoutes.shareEntry(entry.id)),
+          ),
+          IconButton(
             tooltip: 'Edit',
             icon: const Icon(Icons.edit_outlined),
             onPressed: () => context.push(AppRoutes.editEntry(entry.id)),

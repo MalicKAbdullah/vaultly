@@ -151,6 +151,11 @@ class _VaultListScreenState extends ConsumerState<VaultListScreen> {
           eyebrow: _eyebrowFormat.format(now),
           title: 'Vault',
           actions: [
+            HeaderIconButton(
+              icon: Icons.qr_code_2_rounded,
+              tooltip: 'Receive an entry',
+              onPressed: () => context.push(AppRoutes.receiveEntry),
+            ),
             _SortButton(
               sort: query.sort,
               onSelected: (s) =>

@@ -23,6 +23,8 @@ import 'package:vaultkey/src/features/backup/screens/import_screen.dart';
 import 'package:vaultkey/src/features/generator/screens/generator_screen.dart';
 import 'package:vaultkey/src/features/health/screens/health_screen.dart';
 import 'package:vaultkey/src/features/settings/screens/settings_screen.dart';
+import 'package:vaultkey/src/features/share/screens/receive_entry_screen.dart';
+import 'package:vaultkey/src/features/share/screens/share_entry_screen.dart';
 import 'package:vaultkey/src/features/totp/models/totp_config.dart';
 import 'package:vaultkey/src/features/vault/models/card_details.dart';
 import 'package:vaultkey/src/features/vault/models/identity_details.dart';
@@ -456,6 +458,33 @@ void main() {
     );
   });
 
+  testWidgets('share-choose', skip: skip != null, (tester) async {
+    await _render(
+      tester,
+      'share-choose',
+      () => const ShareEntryScreen(entryId: 'github'),
+      overrides: await _overrides(),
+    );
+  });
+
+  testWidgets('receive-invite', skip: skip != null, (tester) async {
+    await _render(
+      tester,
+      'receive-invite',
+      () => const ReceiveEntryScreen(),
+      overrides: await _overrides(),
+    );
+  });
+
+  testWidgets('receive-file', skip: skip != null, (tester) async {
+    await _render(
+      tester,
+      'receive-file',
+      () => const ReceiveEntryScreen(fileContent: '{}'),
+      overrides: await _overrides(),
+    );
+  });
+
   testWidgets('editor', skip: skip != null, (tester) async {
     await _render(
       tester,
@@ -679,8 +708,7 @@ void main() {
   });
 
   testWidgets('store-5-import', skip: skip != null, (tester) async {
-    await storeShot(tester, 5, ImportScreen.new,
-        overrides: await _overrides());
+    await storeShot(tester, 5, ImportScreen.new, overrides: await _overrides());
   });
 
   testWidgets('store-6-unlock', skip: skip != null, (tester) async {
