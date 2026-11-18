@@ -1,9 +1,11 @@
 import 'package:core_backup/core_backup.dart';
 import 'package:core_theme/core_theme.dart';
 import 'package:core_ui/core_ui.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:vaultkey/src/core/app_info.dart';
 import 'package:vaultkey/src/core/appearance_provider.dart';
 import 'package:vaultkey/src/core/di.dart';
@@ -12,6 +14,7 @@ import 'package:vaultkey/src/core/ui/vault_ui.dart';
 import 'package:vaultkey/src/features/auth/providers/auth_providers.dart';
 import 'package:vaultkey/src/features/auth/widgets/identity_check.dart';
 import 'package:vaultkey/src/features/passkeys/widgets/passkey_settings_section.dart';
+import 'package:vaultkey/src/features/settings/screens/emergency_kit_screen.dart';
 import 'package:vaultkey/src/features/settings/providers/settings_providers.dart';
 import 'package:vaultkey/src/features/settings/widgets/autofill_section.dart';
 import 'package:vaultkey/src/features/vault/providers/vault_providers.dart';
@@ -125,6 +128,7 @@ class SettingsScreen extends ConsumerWidget {
     final c = SuiteColors.of(context);
     final biometrics = ref.watch(biometricStateProvider).valueOrNull;
     final hasRecoveryKey = ref.watch(hasRecoveryKeyProvider).valueOrNull;
+    final kitDate = ref.watch(emergencyKitDateProvider).valueOrNull;
     final autoLock = ref.watch(autoLockProvider);
     final supported = biometrics?.supported ?? false;
 
@@ -206,6 +210,18 @@ class SettingsScreen extends ConsumerWidget {
                         },
                         onTap: () => _recoveryKey(context, ref),
                       ),
+                      // Printing goes through Android's PrintManager.
+                      if (defaultTargetPlatform == TargetPlatform.android)
+                        SettingsTile(
+                          icon: Icons.print_outlined,
+                          title: 'Emergency kit',
+                          subtitle: switch (kitDate) {
+                            final DateTime d =>
+                              'Printed ${DateFormat('d MMM yyyy').format(d)}',
+                            null => 'Print your recovery key and backup steps',
+                          },
+                          onTap: () => context.push(AppRoutes.emergencyKit),
+                        ),
                     ],
                   ),
                   // Hides itself entirely on devices without autofill (iOS).

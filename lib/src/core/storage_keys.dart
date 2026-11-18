@@ -17,6 +17,7 @@ abstract final class VaultKeyKeys {
   static const String onboardingDone = 'vaultkey_onboarding_done';
   static const String recoveryWrap = 'vaultkey_recovery_wrap';
   static const String recoveryOffered = 'vaultkey_recovery_offered';
+  static const String emergencyKitAt = 'vaultkey_emergency_kit_at';
   static const String syncDevice = 'vaultkey_sync_device';
   static const String syncPeers = 'vaultkey_sync_peers';
   static const String syncTombstones = 'vaultkey_sync_tombstones';
@@ -38,6 +39,7 @@ abstract final class VaultKeyKeys {
     onboardingDone,
     recoveryWrap,
     recoveryOffered,
+    emergencyKitAt,
     syncDevice,
     syncPeers,
     syncTombstones,
