@@ -1,0 +1,7 @@
+{"roots":[{"id":"content","children":[{"domain":"shop.example","children":[
+{"input":{"type":"text","name":"holder","autocomplete":"cc-name"},"text":true,"domain":"shop.example"},
+{"input":{"type":"text","name":"num","autocomplete":"cc-number"},"text":true,"domain":"shop.example"},
+{"input":{"type":"text","name":"exp","autocomplete":"cc-exp"},"text":true,"domain":"shop.example"},
+{"input":{"type":"text","name":"cvv","autocomplete":"cc-csc"},"text":true,"domain":"shop.example"},
+{"input":{"type":"email","name":"email","autocomplete":"email"},"text":true,"domain":"shop.example"}
+]}]}]}

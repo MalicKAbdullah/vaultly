@@ -1,0 +1,6 @@
+{"roots":[{"id":"content","children":[{"domain":"shop.example","children":[
+{"input":{"type":"text","name":"n","autocomplete":"shipping name"},"text":true,"domain":"shop.example"},
+{"input":{"type":"text","name":"street","autocomplete":"shipping street-address"},"text":true,"domain":"shop.example"},
+{"input":{"type":"text","name":"zip","ua-autofill-hints":"ADDRESS_HOME_ZIP"},"text":true,"domain":"shop.example"},
+{"input":{"type":"email","name":"mail","autocomplete":"email"},"text":true,"domain":"shop.example"}
+]}]}]}

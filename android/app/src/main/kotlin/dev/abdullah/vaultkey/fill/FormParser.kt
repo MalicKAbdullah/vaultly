@@ -9,8 +9,33 @@ class ParsedForm<N>(
     val webDomain: String?,
     /** One-time-code fields: a single input, or a row of one-digit boxes in order. */
     val codes: List<N> = emptyList(),
+    val card: Map<CardField, N> = emptyMap(),
+    val address: Map<AddressField, N> = emptyMap(),
 ) {
-    val isFillable: Boolean get() = usernames.isNotEmpty() || passwords.isNotEmpty() || codes.isNotEmpty()
+    /**
+     * A form is a card form when it names a card number, a login when it has
+     * a password, an address form when it names at least two address fields
+     * (an email alone is a username); otherwise whatever login fields it has.
+     * The partitions never mix: a card form's name and email fields are not
+     * login fields.
+     */
+    val kind: FormKind = when {
+        CardField.NUMBER in card -> FormKind.CARD
+        passwords.isNotEmpty() -> FormKind.LOGIN
+        address.size >= MIN_ADDRESS_FIELDS -> FormKind.ADDRESS
+        else -> FormKind.LOGIN
+    }
+
+    val isFillable: Boolean
+        get() = when (kind) {
+            FormKind.CARD -> card.isNotEmpty()
+            FormKind.ADDRESS -> address.isNotEmpty()
+            FormKind.LOGIN -> usernames.isNotEmpty() || passwords.isNotEmpty() || codes.isNotEmpty()
+        }
+
+    private companion object {
+        const val MIN_ADDRESS_FIELDS = 2
+    }
 }
 
 /**
@@ -45,6 +70,8 @@ object FormParser {
         val usernames = ArrayList<N>()
         val passwords = ArrayList<N>()
         val codes = ArrayList<N>()
+        val card = LinkedHashMap<CardField, N>()
+        val address = LinkedHashMap<AddressField, N>()
         var webDomain: String? = null
 
         fun visit(node: N) {
@@ -56,6 +83,9 @@ object FormParser {
                 if (webDomain == null || kind != null) webDomain = normalizeDomain(domain)
             }
             if (node.isTextField) {
+                val tokens = PaymentAndAddress.tokens(node.autofillHints, attributes)
+                PaymentAndAddress.cardField(tokens)?.let { card.putIfAbsent(it, node) }
+                PaymentAndAddress.addressField(tokens)?.let { address.putIfAbsent(it, node) }
                 when (kind) {
                     Kind.PASSWORD -> passwords.add(node)
                     Kind.USERNAME -> usernames.add(node)
@@ -67,7 +97,7 @@ object FormParser {
             if (codes.isEmpty()) codes.addAll(digitBoxes(node))
         }
         roots.forEach(::visit)
-        return ParsedForm(usernames, passwords, webDomain, codes)
+        return ParsedForm(usernames, passwords, webDomain, codes, card, address)
     }
 
     /** `getWebDomain()` is documented as a bare host; scheme, port and path are stripped all the same. */

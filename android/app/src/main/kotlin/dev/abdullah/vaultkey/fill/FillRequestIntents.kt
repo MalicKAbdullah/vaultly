@@ -51,6 +51,18 @@ object FillRequestIntents {
         }
     }
 
+    const val EXTRA_FORM = "vaultly_form_kind"
+    const val EXTRA_ROLES = "vaultly_field_roles"
+    const val EXTRA_ROLE_IDS = "vaultly_role_ids"
+
+    /** A card or address form: the field roles and the ids they belong to, in the same order. */
+    fun putSection(intent: Intent, kind: FormKind, roles: ArrayList<String>, ids: ArrayList<AutofillId>): Intent =
+        intent.apply {
+            putExtra(EXTRA_FORM, kind.name)
+            putStringArrayListExtra(EXTRA_ROLES, roles)
+            putParcelableArrayListExtra(EXTRA_ROLE_IDS, ids)
+        }
+
     /** The full-app flow ([MainActivity]) for the same request. */
     fun mainActivity(
         context: Context,

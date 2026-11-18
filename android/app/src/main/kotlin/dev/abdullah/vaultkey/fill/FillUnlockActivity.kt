@@ -49,6 +49,8 @@ class FillUnlockActivity : FragmentActivity() {
     private lateinit var passwordIds: ArrayList<AutofillId>
     private lateinit var codeIds: ArrayList<AutofillId>
     private lateinit var targetLabel: String
+    private var formKind = FormKind.LOGIN
+    private var roleIds: List<Pair<String, AutofillId>> = emptyList()
     private val worker: ExecutorService = Executors.newSingleThreadExecutor()
     private var records: List<VaultRecord> = emptyList()
     private var list: LinearLayout? = null
@@ -64,6 +66,12 @@ class FillUnlockActivity : FragmentActivity() {
         usernameIds = intent.getParcelableArrayListExtra(FillRequestIntents.EXTRA_USERNAME_IDS)!!
         passwordIds = intent.getParcelableArrayListExtra(FillRequestIntents.EXTRA_PASSWORD_IDS)!!
         codeIds = intent.getParcelableArrayListExtra(FillRequestIntents.EXTRA_CODE_IDS)!!
+        intent.getStringExtra(FillRequestIntents.EXTRA_FORM)?.let { formKind = FormKind.valueOf(it) }
+        if (formKind != FormKind.LOGIN) {
+            val roles = intent.getStringArrayListExtra(FillRequestIntents.EXTRA_ROLES)!!
+            val ids: ArrayList<AutofillId> = intent.getParcelableArrayListExtra(FillRequestIntents.EXTRA_ROLE_IDS)!!
+            roleIds = roles.zip(ids)
+        }
         targetLabel = when (target) {
             is RequestTarget.Web -> (target as RequestTarget.Web).host
             is RequestTarget.App -> appLabel((target as RequestTarget.App).packageName)
@@ -104,12 +112,46 @@ class FillUnlockActivity : FragmentActivity() {
 
     private fun show(opened: List<VaultRecord>?) {
         if (opened == null) return cancel()
+        if (formKind != FormKind.LOGIN) return showSection(opened)
         records = opened
         val remembered = RememberedChoices(this).get(target)
         when (val plan = FillPlan.of(records, target, remembered, needsCode = usernameIds.isEmpty() && passwordIds.isEmpty())) {
             is FillPlan.Fill -> fill(plan.record, remember = false, keepReady = true)
             is FillPlan.Choose -> showList(plan.ranked)
         }
+    }
+
+    /** A card or address form: one saved card or identity fills at once, several are listed. */
+    private fun showSection(opened: List<VaultRecord>) {
+        records = opened.filter { if (formKind == FormKind.CARD) it.card != null else it.identity != null }
+        when (records.size) {
+            0 -> showList(emptyList())
+            1 -> fillSection(records.single())
+            else -> showList(records.sortedBy { it.title.lowercase() })
+        }
+    }
+
+    private fun fillSection(record: VaultRecord) {
+        if (done) return
+        done = true
+        val values: Map<AutofillId, String> = if (formKind == FormKind.CARD) {
+            SectionValues.card(record.card!!, roleIds.associate { CardField.valueOf(it.first) to it.second })
+        } else {
+            SectionValues.address(record.identity!!, roleIds.associate { AddressField.valueOf(it.first) to it.second })
+        }
+        finishWith(DatasetFactory.filled(this, "Vaultly", values))
+    }
+
+    private fun finishWith(dataset: android.service.autofill.Dataset) {
+        setResult(
+            Activity.RESULT_OK,
+            Intent().putExtra(AutofillManager.EXTRA_AUTHENTICATION_RESULT, dataset).apply {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    putExtra(AutofillManager.EXTRA_AUTHENTICATION_RESULT_EPHEMERAL_DATASET, true)
+                }
+            },
+        )
+        finish()
     }
 
     private fun fill(record: VaultRecord, remember: Boolean, keepReady: Boolean) {
@@ -140,15 +182,7 @@ class FillUnlockActivity : FragmentActivity() {
         if (passwordIds.isNotEmpty() && record.totp != null && FillSettings(this).copyCode) {
             NativeClipboard.copySensitive(this, Totp.code(record.totp, System.currentTimeMillis()))
         }
-        setResult(
-            Activity.RESULT_OK,
-            Intent().putExtra(AutofillManager.EXTRA_AUTHENTICATION_RESULT, dataset).apply {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    putExtra(AutofillManager.EXTRA_AUTHENTICATION_RESULT_EPHEMERAL_DATASET, true)
-                }
-            },
-        )
-        finish()
+        finishWith(dataset)
     }
 
     private fun cancel() {
@@ -266,14 +300,22 @@ class FillUnlockActivity : FragmentActivity() {
                 setTextColor(onSurface)
             })
             addView(TextView(context).apply {
-                text = record.username
+                text = describe(record)
                 textSize = 13f
                 setTextColor(muted)
             })
             setOnClickListener { pick(record) }
         }
 
+    /** The second line of a row: the account, the card's last digits, or the identity's name. */
+    private fun describe(record: VaultRecord): String = when (formKind) {
+        FormKind.CARD -> "•••• ${record.card!!.number.takeLast(4)}"
+        FormKind.ADDRESS -> record.identity!!.fullName.ifEmpty { record.identity.email }
+        FormKind.LOGIN -> record.username
+    }
+
     private fun pick(record: VaultRecord) {
+        if (formKind != FormKind.LOGIN) return fillSection(record)
         if (FillPlan.matches(record, target)) return fill(record, remember = true, keepReady = true)
         val host = EntryHost.of(record)
         val rows = list ?: return
