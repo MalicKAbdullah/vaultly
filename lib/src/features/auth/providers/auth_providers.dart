@@ -193,6 +193,11 @@ final class SessionNotifier extends Notifier<AuthStatus> {
   /// one) and returns it for one-time display.
   Future<String> createRecoveryKey() => _auth.createRecoveryKey(vaultKey);
 
+  /// A recovery key for the session's vault, not yet in force; see
+  /// [MasterAuthService.prepareRecoveryKey].
+  Future<PendingRecoveryKey> prepareRecoveryKey() =>
+      _auth.prepareRecoveryKey(vaultKey);
+
   /// Biometric unlock path: the wrapped key is released by the platform
   /// prompt; the salt comes from secure storage.
   Future<bool> unlockWithBiometrics() async {

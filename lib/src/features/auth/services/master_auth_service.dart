@@ -20,6 +20,16 @@ final class UnlockSuccess extends UnlockResult {
   final Uint8List salt;
 }
 
+/// A recovery key made by [MasterAuthService.prepareRecoveryKey] and not
+/// yet in force.
+final class PendingRecoveryKey {
+  const PendingRecoveryKey._(this.recoveryKey, this._wrap);
+
+  /// Display form, for the user to keep.
+  final String recoveryKey;
+  final String _wrap;
+}
+
 /// The master password — or, for [MasterAuthService.resetWithRecoveryKey],
 /// the recovery key — was not right.
 final class UnlockWrongPassword extends UnlockResult {
@@ -204,6 +214,15 @@ final class MasterAuthService {
   /// the previous recovery key stops working. Returns the key in display form
   /// for the user to save; it is not stored.
   Future<String> createRecoveryKey(Uint8List vaultKey) async {
+    final pending = await prepareRecoveryKey(vaultKey);
+    await commitRecoveryKey(pending);
+    return pending.recoveryKey;
+  }
+
+  /// A new recovery key that does not work yet: the current one stays in
+  /// force until [commitRecoveryKey]. Lets the key be handed out first (a
+  /// printed kit) and switched on only once that succeeded.
+  Future<PendingRecoveryKey> prepareRecoveryKey(Uint8List vaultKey) async {
     if (!await _verifierMatches(vaultKey)) {
       throw StateError('Session key does not match the vault');
     }
@@ -212,9 +231,13 @@ final class MasterAuthService {
       secret: vaultKey,
       passphrase: RecoveryKey.normalize(recoveryKey)!,
     );
-    await _storage.write(key: VaultKeyKeys.recoveryWrap, value: wrap);
+    return PendingRecoveryKey._(recoveryKey, wrap);
+  }
+
+  /// Puts [pending] in force; the previous recovery key stops working.
+  Future<void> commitRecoveryKey(PendingRecoveryKey pending) async {
+    await _storage.write(key: VaultKeyKeys.recoveryWrap, value: pending._wrap);
     await markRecoveryOffered();
-    return recoveryKey;
   }
 
   /// Forgotten master password: unwraps the vault key with [recoveryKey],

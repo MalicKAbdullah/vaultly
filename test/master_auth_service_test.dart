@@ -345,6 +345,45 @@ void main() {
       );
     });
 
+    test('a prepared key works only once committed; then the old one fails',
+        () async {
+      final setup = await auth.setup(goodPassword);
+      final old = await auth.createRecoveryKey(setup.key);
+      final pending = await auth.prepareRecoveryKey(setup.key);
+
+      // Not committed (the kit was not printed): the old key still works.
+      expect(
+        await auth.resetWithRecoveryKey(
+          recoveryKey: pending.recoveryKey,
+          newPassword: 'brand new secret',
+        ),
+        isA<UnlockWrongPassword>(),
+      );
+      final reset = await auth.resetWithRecoveryKey(
+        recoveryKey: old,
+        newPassword: 'brand new secret',
+      );
+      expect(reset, isA<UnlockSuccess>());
+
+      // A kit made after that reset, then committed: only the new key works.
+      final fresh = await auth.prepareRecoveryKey((reset as UnlockSuccess).key);
+      await auth.commitRecoveryKey(fresh);
+      expect(
+        await auth.resetWithRecoveryKey(
+          recoveryKey: old,
+          newPassword: 'another new secret',
+        ),
+        isA<UnlockWrongPassword>(),
+      );
+      expect(
+        await auth.resetWithRecoveryKey(
+          recoveryKey: fresh.recoveryKey,
+          newPassword: 'another new secret',
+        ),
+        isA<UnlockSuccess>(),
+      );
+    });
+
     test('a password change invalidates the recovery key', () async {
       final setup = await auth.setup(goodPassword);
       final code = await auth.createRecoveryKey(setup.key);
