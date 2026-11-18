@@ -126,6 +126,10 @@ class VaultNotifier extends AsyncNotifier<List<VaultEntry>> {
     ]);
   }
 
+  /// Adds [entry] as it is (an entry received from another phone, which
+  /// already has its own new id).
+  Future<void> add(VaultEntry entry) => commit([..._current, entry]);
+
   Future<void> toggleFavorite(String id) async {
     final now = _now();
     await commit([
