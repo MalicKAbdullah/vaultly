@@ -101,6 +101,9 @@ class VaultlyAutofillService : AutofillService() {
             webDomain = parsed.webDomain,
             allowlist = BrowserAllowlist.get(this),
         )
+        if (Log.isLoggable(TIMING_TAG, Log.DEBUG)) {
+            Log.d(TIMING_TAG, "target is ${target::class.simpleName}")
+        }
         // The parser only returns text fields, which all have an autofill id.
         val usernameIds = ArrayList(parsed.usernames.map { it.autofillId!! })
         val passwordIds = ArrayList(parsed.passwords.map { it.autofillId!! })
