@@ -170,6 +170,25 @@ class SettingsScreen extends ConsumerWidget {
                               : null,
                         ),
                       ),
+                      SettingsTile(
+                        icon: Icons.bolt_rounded,
+                        title: 'Keep account ready',
+                        subtitle:
+                            'After you choose one, fill the next pages of '
+                            'that sign-in in one tap for 2 minutes',
+                        trailing: Switch(
+                          value: ref
+                                  .watch(fillSessionEnabledProvider)
+                                  .valueOrNull ??
+                              true,
+                          onChanged: (v) async {
+                            await ref
+                                .read(fillSessionBridgeProvider)
+                                .setEnabled(v);
+                            ref.invalidate(fillSessionEnabledProvider);
+                          },
+                        ),
+                      ),
                       PopupMenuButton<Duration>(
                         tooltip: 'Auto-lock',
                         initialValue: autoLock,

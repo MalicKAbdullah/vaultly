@@ -1,0 +1,14 @@
+{
+  "groups": [
+    ["google.com", "gmail.com", "youtube.com", "googleapis.com"],
+    ["live.com", "microsoft.com", "microsoftonline.com", "office.com", "outlook.com", "xbox.com"],
+    ["apple.com", "icloud.com"],
+    ["amazon.com", "amazon.co.uk", "amazon.de"],
+    ["facebook.com", "messenger.com", "instagram.com"],
+    ["paypal.com", "paypal.me"],
+    ["adobe.com", "adobelogin.com"],
+    ["steampowered.com", "steamcommunity.com"],
+    ["github.com", "githubusercontent.com"],
+    ["yahoo.com", "ymail.com"]
+  ]
+}

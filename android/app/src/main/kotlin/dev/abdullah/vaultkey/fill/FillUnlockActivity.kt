@@ -104,12 +104,12 @@ class FillUnlockActivity : FragmentActivity() {
         records = opened
         val remembered = RememberedChoices(this).get(target)
         when (val plan = FillPlan.of(records, target, remembered)) {
-            is FillPlan.Fill -> fill(plan.record, remember = false)
+            is FillPlan.Fill -> fill(plan.record, remember = false, keepReady = true)
             is FillPlan.Choose -> showList(plan.ranked)
         }
     }
 
-    private fun fill(record: VaultRecord, remember: Boolean) {
+    private fun fill(record: VaultRecord, remember: Boolean, keepReady: Boolean) {
         if (done) return
         done = true
         if (remember) RememberedChoices(this).put(target, record.id)
@@ -117,6 +117,16 @@ class FillUnlockActivity : FragmentActivity() {
         usernameIds.forEach { values[it] = record.username }
         passwordIds.forEach { values[it] = record.password }
         val dataset = DatasetFactory.filled(this, "Vaultly", values)
+        // Later pages of this sign-in (a password after the email, a code
+        // after the password) continue from one tap.
+        val moreToFill = passwordIds.isEmpty() || record.totp != null
+        if (keepReady && moreToFill && FillSettings(this).sessionEnabled) {
+            FillSession.arm(
+                this, record.id, record.username.ifEmpty { record.title },
+                record.username.toCharArray(), record.password.toCharArray(), record.totp,
+                SessionScope.begunOn(target, record.url, EquivalentDomains.get(this)),
+            )
+        }
         setResult(
             Activity.RESULT_OK,
             Intent().putExtra(AutofillManager.EXTRA_AUTHENTICATION_RESULT, dataset).apply {
@@ -251,7 +261,7 @@ class FillUnlockActivity : FragmentActivity() {
         }
 
     private fun pick(record: VaultRecord) {
-        if (FillPlan.matches(record, target)) return fill(record, remember = true)
+        if (FillPlan.matches(record, target)) return fill(record, remember = true, keepReady = true)
         val host = EntryHost.of(record)
         val rows = list ?: return
         rows.removeAllViews()
@@ -263,7 +273,7 @@ class FillUnlockActivity : FragmentActivity() {
         })
         rows.addView(android.widget.Button(this).apply {
             text = "Fill anyway"
-            setOnClickListener { fill(record, remember = false) }
+            setOnClickListener { fill(record, remember = false, keepReady = false) }
         })
     }
 

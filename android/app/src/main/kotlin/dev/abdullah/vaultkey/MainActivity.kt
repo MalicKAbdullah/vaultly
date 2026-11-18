@@ -11,6 +11,8 @@ import android.view.autofill.AutofillId
 import android.view.autofill.AutofillManager
 import android.view.autofill.AutofillValue
 import android.widget.RemoteViews
+import dev.abdullah.vaultkey.fill.FillSession
+import dev.abdullah.vaultkey.fill.FillSessionChannel
 import dev.abdullah.vaultkey.fill.RememberedChoices
 import dev.abdullah.vaultkey.print.EmergencyKitPrinter
 import io.flutter.embedding.android.FlutterFragmentActivity
@@ -68,6 +70,8 @@ class MainActivity : FlutterFragmentActivity() {
             .setMethodCallHandler(BiometricKeyVault(this))
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CredentialChannel.CHANNEL)
             .setMethodCallHandler(CredentialChannel(this))
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, FillSessionChannel.CHANNEL)
+            .setMethodCallHandler(FillSessionChannel(this))
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, EmergencyKitPrinter.CHANNEL)
             .setMethodCallHandler(EmergencyKitPrinter(this))
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
@@ -89,6 +93,7 @@ class MainActivity : FlutterFragmentActivity() {
                     "openSettings" -> result.success(openAutofillSettings())
                     "forgetFillState" -> {
                         RememberedChoices(this).clear()
+                        FillSession.wipe()
                         result.success(null)
                     }
                     else -> result.notImplemented()

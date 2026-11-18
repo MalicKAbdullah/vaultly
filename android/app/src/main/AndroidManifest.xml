@@ -47,6 +47,14 @@
             android:noHistory="true"
             android:taskAffinity=""
             android:configChanges="orientation|screenSize|keyboardHidden|uiMode"/>
+        <!-- Hands the armed session's values to a page; finishes before it is drawn. -->
+        <activity
+            android:name=".fill.FillSessionActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.NoDisplay"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""/>
         <!-- Vaultly as an Android autofill provider (API 26+). -->
         <service
             android:name=".VaultlyAutofillService"
