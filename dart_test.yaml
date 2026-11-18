@@ -1,2 +1,0 @@
-# Real Argon2id (the recovery-key wrap is not injectable) makes some tests slow on a loaded CI runner.
-timeout: 3x

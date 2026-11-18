@@ -1,3 +1,8 @@
+// The recovery-key wrap runs real Argon2id, which can take well over the
+// default 30 seconds per test on a loaded CI runner.
+@Timeout(Duration(minutes: 5))
+library;
+
 import 'package:core_crypto/core_crypto.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
