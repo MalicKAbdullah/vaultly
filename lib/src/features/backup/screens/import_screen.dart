@@ -5,10 +5,13 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:vaultkey/src/core/router/app_router.dart';
 import 'package:intl/intl.dart';
 import 'package:vaultkey/src/core/di.dart';
 import 'package:vaultkey/src/features/backup/services/backup_codec.dart';
 import 'package:vaultkey/src/features/backup/services/file_transfer.dart';
+import 'package:vaultkey/src/features/share/crypto/entry_share.dart';
+import 'package:vaultkey/src/features/share/screens/receive_entry_screen.dart';
 import 'package:vaultkey/src/features/backup/services/vault_merge.dart';
 import 'package:vaultkey/src/features/importers/models/imported_item.dart';
 import 'package:vaultkey/src/features/importers/parsers/csv_importers.dart';
@@ -41,6 +44,23 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
   void dispose() {
     _passphraseController.dispose();
     super.dispose();
+  }
+
+  String? _shareError;
+
+  Future<void> _openSharedFile() async {
+    final file = await FileTransfer.pickTextFile();
+    if (file == null || !mounted) return;
+    if (!FileShare.recognises(file.content)) {
+      setState(() => _shareError = 'That is not a Vaultly shared entry file.');
+      return;
+    }
+    setState(() => _shareError = null);
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ReceiveEntryScreen(fileContent: file.content),
+      ),
+    );
   }
 
   Future<void> _pickBackup() async {
@@ -240,6 +260,35 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
                 ],
               ),
             ),
+            const SizedBox(height: AppSpacing.lg),
+            const SectionHeader(
+              title: 'From another phone',
+              subtitle: 'One entry shared from Vaultly',
+            ),
+            RowGroup(
+              separatorIndent: 66,
+              children: [
+                SettingsTile(
+                  icon: Icons.qr_code_2_rounded,
+                  title: 'Receive an entry',
+                  subtitle: 'The phones scan each other',
+                  onTap: () => context.push(AppRoutes.receiveEntry),
+                ),
+                SettingsTile(
+                  icon: Icons.insert_drive_file_outlined,
+                  title: 'Shared entry file',
+                  subtitle: 'A .vaultlyshare file and its code',
+                  onTap: _openSharedFile,
+                ),
+              ],
+            ),
+            if (_shareError != null) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                _shareError!,
+                style: AppTextStyles.bodySmall.copyWith(color: c.negative),
+              ),
+            ],
             const SizedBox(height: AppSpacing.lg),
             const SectionHeader(
               title: 'From another app',
