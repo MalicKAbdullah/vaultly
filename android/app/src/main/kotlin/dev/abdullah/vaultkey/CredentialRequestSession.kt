@@ -11,6 +11,8 @@ import androidx.annotation.RequiresApi
 import androidx.credentials.CreatePublicKeyCredentialRequest
 import androidx.credentials.CreatePublicKeyCredentialResponse
 import androidx.credentials.GetCredentialResponse
+import androidx.credentials.CreatePasswordRequest
+import androidx.credentials.CreatePasswordResponse
 import androidx.credentials.GetPasswordOption
 import androidx.credentials.GetPublicKeyCredentialOption
 import androidx.credentials.PasswordCredential
@@ -62,6 +64,7 @@ class CredentialRequestSession(private val activity: Activity) {
         const val EXTRA_ENTRY_ID = "vaultly_entry_id"
 
         const val KIND_CREATE = "create"
+        const val KIND_CREATE_PASSWORD = "create_password"
         const val KIND_UNLOCK = "unlock"
         const val KIND_PASSKEY = "passkey"
         const val KIND_PASSWORD = "password"
@@ -111,6 +114,7 @@ class CredentialRequestSession(private val activity: Activity) {
                 "list" -> result.success(list(call))
                 "assert" -> result.success(assert(call))
                 "fillPassword" -> result.success(fillPassword(call))
+                "finishPasswordSave" -> result.success(finishPasswordSave())
                 "cancel" -> {
                     cancel(call.argument<String>("reason"))
                     result.success(null)
@@ -127,6 +131,7 @@ class CredentialRequestSession(private val activity: Activity) {
     private fun pendingRequest(result: MethodChannel.Result) {
         val prepare: (() -> Map<String, Any?>)? = when (kind) {
             KIND_CREATE -> ::prepareCreate
+            KIND_CREATE_PASSWORD -> ::prepareCreatePassword
             KIND_UNLOCK -> ::prepareListing
             KIND_PASSKEY -> ::prepareAssertion
             KIND_PASSWORD -> ::preparePassword
@@ -175,6 +180,23 @@ class CredentialRequestSession(private val activity: Activity) {
             "userHandle" to Base64Url.encode(options.userHandle),
             "excludeCredentialIds" to options.excludeCredentialIds.map(Base64Url::encode),
             "caller" to who.label,
+        )
+    }
+
+    private fun prepareCreatePassword(): Map<String, Any?> {
+        val request = PendingIntentHandler.retrieveProviderCreateCredentialRequest(intent)
+            ?: throw RejectedRequest("The request is missing.")
+        val call = request.callingRequest as? CreatePasswordRequest
+            ?: throw RejectedRequest("This request is not a password.")
+        val who = CredentialCaller.resolve(activity, request.callingAppInfo)
+        // The caller's label comes from the verified identity: a trusted
+        // browser's page host, or the app's own package.
+        return mapOf(
+            "kind" to "savePassword",
+            "username" to call.id,
+            "password" to call.password,
+            "domain" to (who as? CredentialCaller.Web)?.host,
+            "package" to (who as? CredentialCaller.App)?.packageName,
         )
     }
 
@@ -335,6 +357,15 @@ class CredentialRequestSession(private val activity: Activity) {
         return true
     }
 
+    /** The password was stored in the vault; tell the app that asked. */
+    private fun finishPasswordSave(): Boolean {
+        check(kind == KIND_CREATE_PASSWORD) { "No password save is pending" }
+        val data = Intent()
+        PendingIntentHandler.setCreateCredentialResponse(data, CreatePasswordResponse())
+        finish(Activity.RESULT_OK, data)
+        return true
+    }
+
     private fun fillPassword(call: MethodCall): Boolean {
         check(kind == KIND_PASSWORD) { "No password request is pending" }
         val credential = PasswordCredential(
@@ -356,6 +387,10 @@ class CredentialRequestSession(private val activity: Activity) {
         val message = rejection ?: "Cancelled in Vaultly"
         val data = Intent()
         when (kind) {
+            KIND_CREATE_PASSWORD -> PendingIntentHandler.setCreateCredentialException(
+                data,
+                if (rejection != null) CreateCredentialUnknownException(message) else CreateCredentialCancellationException(message),
+            )
             KIND_CREATE -> PendingIntentHandler.setCreateCredentialException(
                 data,
                 when {

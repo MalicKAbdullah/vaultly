@@ -53,6 +53,9 @@ final class FakeCredentialBridge implements ICredentialBridge {
   }
 
   @override
+  Future<void> finishPasswordSave() async => calls.add('finishPasswordSave');
+
+  @override
   Future<void> fillPassword(VaultEntry entry) async {
     calls.add('fillPassword');
     filledWith = entry;

@@ -10,31 +10,55 @@ import 'package:vaultkey/src/features/autofill/services/login_capture.dart';
 import 'package:vaultkey/src/features/vault/models/vault_entry.dart';
 import 'package:vaultkey/src/features/vault/providers/vault_providers.dart';
 
-/// Asks whether to keep a login the user just submitted in another app or
-/// a browser: save it, update the saved password, or leave it.
-class SaveLoginScreen extends ConsumerStatefulWidget {
+/// The screen for a login captured by an autofill save request.
+class SaveLoginScreen extends ConsumerWidget {
   const SaveLoginScreen({super.key});
 
   @override
-  ConsumerState<SaveLoginScreen> createState() => _SaveLoginScreenState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final login = ref.watch(pendingSaveProvider).valueOrNull;
+    if (login == null) return const Scaffold(body: SizedBox.shrink());
+    return LoginCaptureView(
+      login: login,
+      onFinish: (message) =>
+          ref.read(pendingSaveProvider.notifier).finish(message: message),
+    );
+  }
 }
 
-class _SaveLoginScreenState extends ConsumerState<SaveLoginScreen> {
+/// Asks whether to keep a login the user just submitted in another app or
+/// a browser: save it, update the saved password, or leave it. [onFinish]
+/// closes the request, with a message to show when something was stored.
+class LoginCaptureView extends ConsumerStatefulWidget {
+  const LoginCaptureView({
+    required this.login,
+    required this.onFinish,
+    super.key,
+  });
+
+  final CapturedLogin login;
+  final Future<void> Function(String? message) onFinish;
+
+  @override
+  ConsumerState<LoginCaptureView> createState() => _LoginCaptureViewState();
+}
+
+class _LoginCaptureViewState extends ConsumerState<LoginCaptureView> {
   bool _busy = false;
 
   Future<void> _run(Future<void> Function() action, String message) async {
     if (_busy) return;
     setState(() => _busy = true);
     await action();
-    await ref.read(pendingSaveProvider.notifier).finish(message: message);
+    await widget.onFinish(message);
   }
 
   @override
   Widget build(BuildContext context) {
     final c = SuiteColors.of(context);
-    final login = ref.watch(pendingSaveProvider).valueOrNull;
+    final login = widget.login;
     final entries = ref.watch(vaultEntriesProvider).valueOrNull;
-    if (login == null || entries == null) {
+    if (entries == null) {
       return const Scaffold(body: SizedBox.shrink());
     }
     final fix = ref.watch(fixTargetProvider);
@@ -61,9 +85,7 @@ class _SaveLoginScreenState extends ConsumerState<SaveLoginScreen> {
         leading: IconButton(
           tooltip: 'Not now',
           icon: const Icon(Icons.close),
-          onPressed: _busy
-              ? null
-              : () => ref.read(pendingSaveProvider.notifier).finish(),
+          onPressed: _busy ? null : () => widget.onFinish(null),
         ),
       ),
       body: SafeArea(
@@ -107,7 +129,8 @@ class _SaveLoginScreenState extends ConsumerState<SaveLoginScreen> {
                     : VaultButtonVariant.secondary,
                 onPressed: _busy
                     ? null
-                    : () => ref.read(pendingSaveProvider.notifier).finish(),
+                    : () => widget
+                        .onFinish(action == null ? 'Already saved' : null),
               ),
             ],
           ),

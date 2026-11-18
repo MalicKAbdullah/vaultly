@@ -97,7 +97,7 @@ void main() {
     expect(find.text('Save'), findsNothing);
     await tester.tap(find.text('Done'));
     await tester.pump();
-    expect(bridge.finishedSaves, [null]);
+    expect(bridge.finishedSaves, ['Already saved']);
     expect(container.read(vaultEntriesProvider).requireValue.length, 1);
   });
 
