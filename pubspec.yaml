@@ -1,6 +1,6 @@
 name: vaultkey
 description: Vaultly — an offline, encrypted password manager with vault health insights and scheduled backups.
-version: 1.10.0+13
+version: 1.11.0+14
 publish_to: none
 
 environment:
