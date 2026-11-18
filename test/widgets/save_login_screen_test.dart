@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vaultkey/src/core/di.dart';
 import 'package:vaultkey/src/core/interfaces/autofill_bridge.dart';
 import 'package:vaultkey/src/features/autofill/screens/save_login_screen.dart';
+import 'package:vaultkey/src/features/health/services/fix_it.dart';
 import 'package:vaultkey/src/features/vault/providers/vault_providers.dart';
 
 import '../fakes/fakes.dart';
@@ -13,8 +14,9 @@ void main() {
   Future<(FakeAutofillBridge, ProviderContainer)> pump(
     WidgetTester tester,
     CapturedLogin login,
-    List seed,
-  ) async {
+    List seed, {
+    FixTarget? fix,
+  }) async {
     final bridge = FakeAutofillBridge()..save = login;
     final container = ProviderContainer(
       overrides: [
@@ -26,6 +28,7 @@ void main() {
       ],
     );
     addTearDown(container.dispose);
+    container.read(fixTargetProvider.notifier).state = fix;
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
@@ -108,5 +111,45 @@ void main() {
     await tester.pump();
     expect(bridge.finishedSaves, [null]);
     expect(container.read(vaultEntriesProvider).requireValue, isEmpty);
+  });
+
+  testWidgets('a fix target sends the new password to that entry', (
+    tester,
+  ) async {
+    final ada = makeEntry(id: 'a', title: 'A', username: 'ada', url: 'a.com');
+    final bob = makeEntry(id: 'b', title: 'B', username: 'bob', url: 'a.com');
+    final (_, container) = await pump(
+      tester,
+      const CapturedLogin(username: 'ada', password: 'new', host: 'a.com'),
+      [ada, bob],
+      fix: FixTarget(
+        entryId: 'b',
+        host: 'a.com',
+        expiresAt: DateTime(2026, 7, 5, 0, 10),
+      ),
+    );
+    expect(find.text('Update B?'), findsOneWidget);
+    await tester.tap(find.text('Update'));
+    await tester.pump();
+    await tester.pump();
+    final entries = container.read(vaultEntriesProvider).requireValue;
+    expect(entries.firstWhere((e) => e.id == 'b').password, 'new');
+    expect(entries.firstWhere((e) => e.id == 'a').password, ada.password);
+  });
+
+  testWidgets('an expired fix target is ignored', (tester) async {
+    final ada = makeEntry(id: 'a', title: 'A', username: 'ada', url: 'a.com');
+    final bob = makeEntry(id: 'b', title: 'B', username: 'bob', url: 'a.com');
+    await pump(
+      tester,
+      const CapturedLogin(username: 'zed', password: 'new', host: 'a.com'),
+      [ada, bob],
+      fix: FixTarget(
+        entryId: 'b',
+        host: 'a.com',
+        expiresAt: DateTime(2026, 7, 4),
+      ),
+    );
+    expect(find.text('Save password to Vaultly?'), findsOneWidget);
   });
 }
