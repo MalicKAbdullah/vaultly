@@ -1,5 +1,7 @@
 import 'package:core_theme/core_theme.dart';
 import 'package:core_ui/core_ui.dart';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -30,6 +32,47 @@ class _EntryDetailScreenState extends ConsumerState<EntryDetailScreen> {
   bool _revealed = false;
   bool _numberRevealed = false;
   bool _cvcRevealed = false;
+  bool _ready = false;
+  Timer? _readyTimer;
+
+  @override
+  void dispose() {
+    _readyTimer?.cancel();
+    super.dispose();
+  }
+
+  /// Keeps this login ready for the site's sign-in pages, then opens the
+  /// site. "Continue as" on those pages fills it with one tap.
+  Future<void> _signIn(VaultEntry entry) async {
+    final totp = entry.totp;
+    await ref.read(fillSessionBridgeProvider).arm(
+          entryId: entry.id,
+          title: entry.title,
+          username: entry.username,
+          password: entry.password,
+          url: entry.url,
+          totp: totp == null
+              ? null
+              : {
+                  'secret': totp.secret,
+                  'algorithm': totp.algorithm.label,
+                  'digits': totp.digits,
+                  'period': totp.period,
+                },
+        );
+    _readyTimer?.cancel();
+    _readyTimer = Timer(const Duration(minutes: 2), () {
+      if (mounted) setState(() => _ready = false);
+    });
+    if (mounted) setState(() => _ready = true);
+    await _openUrl(entry.url);
+  }
+
+  Future<void> _endSession() async {
+    _readyTimer?.cancel();
+    await ref.read(fillSessionBridgeProvider).clear();
+    if (mounted) setState(() => _ready = false);
+  }
 
   Future<void> _copySensitive(String value, String what) async {
     final guard = ref.read(clipboardGuardProvider);
@@ -119,6 +162,7 @@ class _EntryDetailScreenState extends ConsumerState<EntryDetailScreen> {
     final card = entry.card;
     final identity = entry.identity;
     final cardNumber = card == null ? '' : card.number;
+    final canSignIn = entry.url.isNotEmpty && entry.password.isNotEmpty;
 
     Widget revealButton(String what, bool shown, VoidCallback toggle) =>
         IconButton(
@@ -300,13 +344,26 @@ class _EntryDetailScreenState extends ConsumerState<EntryDetailScreen> {
                     icon: Icons.copy_rounded,
                     onPressed: () => _copySensitive(cardNumber, 'Card number'),
                   )
+                else if (entry.password.isNotEmpty && canSignIn)
+                  VaultButton(
+                    label: 'Sign in',
+                    icon: Icons.login_rounded,
+                    onPressed: () => _signIn(entry),
+                  )
                 else if (entry.password.isNotEmpty)
                   VaultButton(
                     label: 'Copy password',
                     icon: Icons.copy_rounded,
                     onPressed: () => _copySensitive(entry.password, 'Password'),
                   ),
-                if (entry.url.isNotEmpty)
+                if (entry.password.isNotEmpty && canSignIn)
+                  VaultButton(
+                    label: 'Copy password',
+                    icon: Icons.copy_rounded,
+                    variant: VaultButtonVariant.secondary,
+                    onPressed: () => _copySensitive(entry.password, 'Password'),
+                  ),
+                if (entry.url.isNotEmpty && !canSignIn)
                   VaultButton(
                     label: 'Open site',
                     icon: Icons.open_in_new_rounded,
@@ -315,6 +372,10 @@ class _EntryDetailScreenState extends ConsumerState<EntryDetailScreen> {
                   ),
               ],
             ),
+          ],
+          if (_ready) ...[
+            const SizedBox(height: AppSpacing.smd),
+            _ReadyToFill(onEnd: _endSession),
           ],
           if (cardFields.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.lg),
@@ -510,6 +571,31 @@ class DetailActionButtons extends StatelessWidget {
           if (i > 0) const SizedBox(height: AppSpacing.smd),
           children[i],
         ],
+      ],
+    );
+  }
+}
+
+/// Shown while a "Sign in" session is armed for this entry.
+class _ReadyToFill extends StatelessWidget {
+  const _ReadyToFill({required this.onEnd});
+
+  final VoidCallback onEnd;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = SuiteColors.of(context);
+    return Row(
+      children: [
+        Icon(Icons.bolt_rounded, size: 18, color: c.accent),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Text(
+            'Ready to fill for 2 min',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ),
+        TextButton(onPressed: onEnd, child: const Text('End')),
       ],
     );
   }
