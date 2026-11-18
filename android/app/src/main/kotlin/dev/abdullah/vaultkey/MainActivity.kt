@@ -49,6 +49,13 @@ class MainActivity : FlutterFragmentActivity() {
         readAutofillIntent(intent)
     }
 
+    override fun onDestroy() {
+        // A save the user walked away from must not leave the captured
+        // password behind in memory.
+        if (isFinishing && isSaveFlow) PendingSave.clear()
+        super.onDestroy()
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         readAutofillIntent(intent)
